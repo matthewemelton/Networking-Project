@@ -22,6 +22,8 @@ fileStorage = {}
 
 
 def Upload(fileName, connection):
+    # We may need try/except here if client doesn't have the file
+
     fileBytes = connection.recv(1024)
 
     fileStorage[fileName] = File(fileName)
@@ -100,22 +102,26 @@ def HandleClient(connection):
 def GetFile(fileName):
     existsOnServer = True
 
-    fileStorage[fileName] = File(fileName)
-    fileObj = fileStorage[fileName]
+    # If the file exists in fileStorage, then it is already in ./ServerFiles
+    if fileName in fileStorage:
+        fileObj = fileStorage[fileName]
 
-    if not os.path.exists(f"./ServerFiles/{fileName}"):
-        existsOnServer = False
-        # we need to check if the other client has it...
-        # make fileObj.fileContents = to client 2's file
-        # fileObj.size = size of client 2's file
-
-        fileObj.fileContents = "BYTES COLLECTED FROM CLIENT 2"
-    else:
         with open(f"./ServerFiles/{fileName}", "r") as f:
             data = f.read()
             fileObj.initBytesGivenContent(data)
 
-        # the server has the file
+    # If the file does not exist in fileStorage, then we need client 2 to upload the file to the server temporarily for client 1 to receive it
+    else:
+        existsOnServer = False
+
+        client2Connection = None  # Change this to be the client 2 connection object
+
+        # Using upload here downloads the file from client 2 onto the server. The file will need to be deleted from the server after client 1 receives it
+        Upload(fileName, client2Connection)
+
+        # fileName will always exist in fileStorage as long as client 2 has the file, because the Upload adds it
+        fileObj = fileStorage[fileName]
+        fileObj.initBytesGivenContent(fileStorage[fileName])
 
     return (existsOnServer, fileObj)
 
