@@ -121,7 +121,6 @@ def GetFile(fileName):
 
         # fileName will always exist in fileStorage as long as client 2 has the file, because the Upload adds it
         fileObj = fileStorage[fileName]
-        fileObj.initBytesGivenContent(fileStorage[fileName])
 
     return (existsOnServer, fileObj)
 
