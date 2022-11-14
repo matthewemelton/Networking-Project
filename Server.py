@@ -16,7 +16,7 @@ if not os.path.exists("./ServerFiles"):
 
 
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
-PORT = 54321  # Port to listen on (non-privileged ports are > 1023)
+PORT = 55321  # Port to listen on (non-privileged ports are > 1023)
 fileStorage = {}
 
 def Upload(fileName, connection):
@@ -24,6 +24,7 @@ def Upload(fileName, connection):
   
   fileStorage[fileName] = File(fileName)
   fileObj = fileStorage[fileName]
+  fileObj.fileBytes = fileBytes
   fileObj.fileContents = fileBytes.decode(FORMAT)
 
   with open(f"./ServerFiles/{fileName}", "w") as f:
@@ -41,12 +42,13 @@ def Upload(fileName, connection):
   """)
   
 def Download(fileName, connection):
-  existsOnServer, fileBytes = GetFile(fileName)
+  existsOnServer, fileObj = GetFile(fileName)
   fileObj = fileStorage[fileName]
 
-  connection.sendall(fileBytes)
+  connection.sendall(fileObj.fileBytes)
   
-  fileStorage[fileName].downloads += 1
+  fileObj.initSize()
+  fileObj.downloads += 1
   
   print(f"""
   {fileObj.name}
@@ -79,7 +81,6 @@ def HandleClient(connection):
     # wait for the client to send a command
     data = connection.recv(1024)
     data = data.decode(FORMAT)
-    print(f"\n\n{data}\n\n")
     
     command, fileName = data.split()
     
@@ -113,14 +114,14 @@ def GetFile(fileName):
     
     fileObj.fileContents = "BYTES COLLECTED FROM CLIENT 2"
   else:
-    f = open(f"./ServerFiles/{fileName}", "r")
-    data = f.read()
-    fileObj.fileContents = data.encode(FORMAT)
+    with open(f"./ServerFiles/{fileName}", "r") as f:
+      data = f.read()
+      fileObj.fileContent = data
+      fileObj.fileBytes = data.encode(FORMAT)
     
-    f.close()
     # the server has the file
 
-  return (existsOnServer, fileObj.fileContents)
+  return (existsOnServer, fileObj)
   
   
 def Main():
