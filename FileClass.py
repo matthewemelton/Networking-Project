@@ -5,5 +5,7 @@ class File:
     self.name = name
     self.path = f"./{name}"
     self.downloads = 0
-    self.fileSize = os.path.getsize(f"./ServerFiles/{name}")
     self.fileContents = None
+
+  def initSize(self):
+    self.fileSize = os.path.getsize(f"./ServerFiles/{self.name}")

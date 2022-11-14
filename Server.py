@@ -16,17 +16,21 @@ if not os.path.exists("./ServerFiles"):
 
 
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
-PORT = 65322  # Port to listen on (non-privileged ports are > 1023)
+PORT = 54321  # Port to listen on (non-privileged ports are > 1023)
 fileStorage = {}
 
 def Upload(fileName, connection):
+  fileBytes = connection.recv(1024)
   
-  CreateFile(fileName)
   fileStorage[fileName] = File(fileName)
   fileObj = fileStorage[fileName]
-  
-  fileBytes = connection.recv(1024)
-  fileObj.fileContents = fileBytes
+  fileObj.fileContents = fileBytes.decode(FORMAT)
+
+  with open(f"./ServerFiles/{fileName}", "w") as f:
+    f.write(fileObj.fileContents)
+
+  fileObj.initSize()
+
   
   print(f"""
   {fileObj.name}
@@ -75,7 +79,7 @@ def HandleClient(connection):
     # wait for the client to send a command
     data = connection.recv(1024)
     data = data.decode(FORMAT)
-
+    print(f"\n\n{data}\n\n")
     
     command, fileName = data.split()
     
@@ -117,13 +121,6 @@ def GetFile(fileName):
     # the server has the file
 
   return (existsOnServer, fileObj.fileContents)
-
-def CreateFile(fileName):
-  if os.path.exists(f"./ServerFiles/{fileName}"):
-    print(f"File already exist")
-  else:
-    print()
-    # create the file
   
   
 def Main():

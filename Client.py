@@ -5,7 +5,7 @@ import socket, os, time, datetime
 # clientDirectory = Directory()
 
 HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 65322  # The port used by the server
+PORT = 54321  # The port used by the server
 FORMAT = 'utf-8' # The encoding format used for the file
 downloadDict = {}
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -18,18 +18,18 @@ def Upload(fileName):
     # clientDirectory.fileUploadDateTime[fileName] = datetime.now()
     # clientDirectory.fileDownloads[fileName] = 0
     # clientDirectory.fileSizes[fileName] = os.path.getsize(fileName)
-    
-    file = open(fileName, "r") # Open the file
-    data = file.read() # Read the data from the file
 
-    # Send the info to the server in the format: COMMAND fileName
-    # Spaces are being used as the delimeters
-    s.send(b"UPLOAD " + bytes(fileName.encode(FORMAT)))
+    # Open the file
+    with open(fileName, "r") as f:
+      data = f.read() # Read the data from the file
 
-    # Send the data
-    s.send(data.encode(FORMAT))
-  
-    file.close() # Close the file
+      # Send the info to the server in the format: COMMAND fileName
+      # Spaces are being used as the delimeters
+      s.send(b"UPLOAD " + bytes(fileName.encode(FORMAT)))
+      time.sleep(0.01) # This sleep ensures that they get sent as seperate transmissions
+      # Send the data
+      s.send(data.encode(FORMAT))
+
 
   # If not, give an error message
   else:
@@ -58,10 +58,10 @@ def Download(fileName):
   data = s.recv(1024) # Receive data from the server
   data = data.decode(FORMAT)
   print(f"THIS IS THE DATA {data}")
-  
-  f = open(fileName, 'w') # Create the new file
-  f.write(data) # Write the data received from the server to the new file
-  f.close() # Close the file
+
+  with open(fileName, 'w') as f:
+    f.write(data) # Write the data received from the server to the new file
+
   s.send(b"ACK")
   t1 = time.time() # End timer
   print(f"DOWNLOAD ran for: {t1-t0} \n")
@@ -97,6 +97,7 @@ def Main():
     # Get the commmand and filename (if applicable) from the user
     userInput = input("Enter your command: ")
     command = None
+    print(f"\n\n\n{userInput}\n\n\n")
     
     # Separate the command and filename into separate variables
     if userInput != "CONNECT":
