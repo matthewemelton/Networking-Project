@@ -5,7 +5,7 @@ import socket, os, time, datetime
 # clientDirectory = Directory()
 
 HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 55321  # The port used by the server
+PORT = 54321  # The port used by the server
 FORMAT = 'utf-8' # The encoding format used for the file
 downloadDict = {}
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

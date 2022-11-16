@@ -9,7 +9,8 @@ FORMAT = "utf-8"
 
 numClients = 0
 numThreads = 0
-clients = []
+clients = {}
+client1, client2 = 0
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 if not os.path.exists("./ServerFiles"):
@@ -17,12 +18,11 @@ if not os.path.exists("./ServerFiles"):
 
 
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
-PORT = 55321  # Port to listen on (non-privileged ports are > 1023)
+PORT = 54321  # Port to listen on (non-privileged ports are > 1023)
 fileStorage = {}
 
 
 def Upload(fileName, connection):
-    # We may need try/except here if client doesn't have the file
 
     fileBytes = connection.recv(1024)
 
@@ -44,7 +44,7 @@ def Upload(fileName, connection):
 
 
 def Download(fileName, connection):
-    existsOnServer, fileObj = GetFile(fileName)
+    existsOnServer, fileObj = GetFile(fileName, connection)
     fileObj = fileStorage[fileName]
 
     connection.sendall(fileObj.fileBytes)
@@ -74,32 +74,35 @@ def Download(fileName, connection):
 
 
 def HandleClient(connection):
-    # initalize the client and give the client an ID
-    global numThreads
-    clientID = str(numClients)
-    print(f"I am handling a client in thread {numThreads}")
+  # initalize the client and give the client an ID
+  global numThreads, numClients, clients
+  clientID = numClients
+  clients[clientID] = connection
 
-    while True:
-        # wait for the client to send a command
-        data = connection.recv(1024)
-        data = data.decode(FORMAT)
+  while True:
+    # wait for the client to send a command
+    data = connection.recv(1024)
+    data = data.decode(FORMAT)
+    print(f"\n\n{data}\n\n")
+    
+    command, fileName = data.split()
+    
+    if command == "UPLOAD":
+      Upload(fileName, connection)
 
-        command, fileName = data.split()
+    
+    elif command == "DOWNLOAD":
+      Download(fileName, connection)
+      
+      
+    elif data.decode(FORMAT) == "DISCONNECT":
+      temp = "GoodBye"
+      connection.send(temp.encode(FORMAT))
+      connection.close()
+      break
+  
 
-        if command == "UPLOAD":
-            Upload(fileName, connection)
-
-        elif command == "DOWNLOAD":
-            Download(fileName, connection)
-
-        elif data.decode(FORMAT) == "DISCONNECT":
-            temp = "GoodBye"
-            connection.send(temp.encode(FORMAT))
-            connection.close()
-            break
-
-
-def GetFile(fileName):
+def GetFile(fileName, connection):
     existsOnServer = True
 
     # If the file exists in fileStorage, then it is already in ./ServerFiles
@@ -114,10 +117,13 @@ def GetFile(fileName):
     else:
         existsOnServer = False
 
-        client2Connection = None  # Change this to be the client 2 connection object
-
+        
+        if(connection == clients[1]):  # Change this to be the client 2 connection object
+            otherClient = clients[2]
+        else:
+            otherClient = clients[1]
         # Using upload here downloads the file from client 2 onto the server. The file will need to be deleted from the server after client 1 receives it
-        Upload(fileName, client2Connection)
+        Upload(fileName, otherClient)
 
         # fileName will always exist in fileStorage as long as client 2 has the file, because the Upload adds it
         fileObj = fileStorage[fileName]
@@ -140,26 +146,14 @@ def Main():
 
         # this does work
         conn, addr = s.accept()
-        clients.append((conn, addr))
-        global numClients
-        numClients += 1
 
-        client1Addr = clients[0][1][0]
-        client1Port = clients[0][1][1]
-        client2Addr = None
-        client2Port = None
-
-        if numClients == 2:
-            client2Addr = clients[1][1][0]
-            client2Port = clients[1][1][1]
-
-        # print(f"Connected to {addr[0]}:{addr[1]}")
-        print(f"CLIENT1 = Address: {client1Addr}\n Port: {client1Port}\n")
-        print(f"CLIENT2 = Address: {client2Addr}\n Port: {client2Port}\n")
-
-        thread.start_new_thread(HandleClient, (clients[0][0],))
+        thread.start_new_thread(HandleClient, (conn, ))
         global numThreads
         numThreads += 1
+        if(numThreads == 2):
+            global clients, client1, client2
+            client1 = clients[1]
+            client2 = clients[2]
 
     # server should never reach this line of code unless we break from the above loop
     s.close()
