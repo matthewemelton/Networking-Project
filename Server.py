@@ -100,6 +100,8 @@ def Delete(fileName, connection):
   
   if os.path.isfile(f"./ServerFiles/{fileName}"):
     os.remove(f"./ServerFiles/{fileName}")
+    del fileStorage[fileName]
+
   else:
     print("ERROR: file does not exist\n")
         
