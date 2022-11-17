@@ -55,6 +55,9 @@ def Download(fileName):
   t0 = time.time() # Start timer
   s.send(b"DOWNLOAD " + bytes(fileName.encode(FORMAT)))
 
+    data = s.recv(1024) # Receive data from the server
+
+  
   data = s.recv(1024) # Receive data from the server
   data = data.decode(FORMAT)
   print(f"THIS IS THE DATA {data}")

@@ -1,6 +1,6 @@
 # this is the server for the Fall 2022 CS 371 Project
 
-import socket, threading, _thread as thread, os
+import socket, threading, _thread as thread, os, time
 from FileClass import File
 
 print_lock = threading.Lock()
@@ -31,7 +31,7 @@ def OnStart():
     fileObj = fileStorage[fileName]
 
     fileObj.loadFileSize()
-    
+
 
 def Upload(fileName, connection):
 
@@ -55,6 +55,9 @@ def Upload(fileName, connection):
 def Download(fileName, connection):
   existsOnServer, fileObj = GetFile(fileName, connection)
   fileObj = fileStorage[fileName]
+
+  connection.send("SERVER" if existsOnServer else "CLIENT2")
+  time.sleep(0.01)
 
   connection.send(fileObj.fileBytes)
 
@@ -83,29 +86,32 @@ def Download(fileName, connection):
   else:
     print("ERROR: no ack from client\n")
 
+
 def Dir(connection):
   filesInFolder = os.listdir(f'./ServerFiles')
   print(filesInFolder)
 
   statistics = ""
-  
+
   for fileName in filesInFolder:
     fileObj = fileStorage[fileName]
     fileObj.loadStatistics()
     statistics += fileObj.statistics
-  
+
   connection.sendall(bytes(statistics.encode(FORMAT)))
 
+
 def Delete(fileName, connection):
-  
+
   if os.path.isfile(f"./ServerFiles/{fileName}"):
     os.remove(f"./ServerFiles/{fileName}")
     del fileStorage[fileName]
 
   else:
     print("ERROR: file does not exist\n")
-        
+
   connection.sendall(bytes("ACK".encode(FORMAT)))
+
 
 def HandleClient(connection):
   # initalize the client and give the client an ID
@@ -127,7 +133,7 @@ def HandleClient(connection):
 
     clientTransmission = data.split()
     command = clientTransmission[0]
-    
+
     if command == "UPLOAD":
       fileName = clientTransmission[1]
       Upload(fileName, connection)
@@ -198,10 +204,9 @@ def Main():
 
     # this does work
     conn, addr = s.accept()
-    
+
     thread.start_new_thread(HandleClient, (conn, ))
     numThreads += 1
-    
 
   # server should never reach this line of code unless we break from the above loop
   s.close()
