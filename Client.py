@@ -10,6 +10,11 @@ FORMAT = 'utf-8' # The encoding format used for the file
 downloadDict = {}
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+def Check(fileName):
+  Upload(fileName)
+
+  s.send("EXISTS".encode(FORMAT))
+
 def Upload(fileName):
   global s
   t0 = time.time() # Start timer
@@ -131,7 +136,11 @@ def Main():
     elif command == "DELETE":
       fileName = splitInput[1]
       Delete(fileName)
-   
+      
+    elif command == "CHECK":
+      fileName = splitInput[1]
+      Check(fileName)
+       
     # connect to the specified host and port
     elif command == "CONNECT":
       HOST, PORT = splitInput[1:]

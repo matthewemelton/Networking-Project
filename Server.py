@@ -18,7 +18,7 @@ if not os.path.exists("./ServerFiles"):
   os.mkdir("./ServerFiles")
 
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
-PORT = 54321  # Port to listen on (non-privileged ports are > 1023)
+PORT = 54322  # Port to listen on (non-privileged ports are > 1023)
 fileStorage = {}
 
 
@@ -56,8 +56,8 @@ def Download(fileName, connection):
   existsOnServer, fileObj = GetFile(fileName, connection)
   fileObj = fileStorage[fileName]
 
-  connection.send("SERVER" if existsOnServer else "CLIENT2")
-  time.sleep(0.01)
+  # connection.send("SERVER" if existsOnServer else "CLIENT2")
+  # time.sleep(0.01)
 
   connection.send(fileObj.fileBytes)
 
@@ -149,7 +149,7 @@ def HandleClient(connection):
       fileName = clientTransmission[1]
       Delete(fileName, connection)
 
-    elif data.decode(FORMAT) == "DISCONNECT":
+    elif command == "DISCONNECT":
       temp = "GoodBye"
       connection.send(temp.encode(FORMAT))
       connection.close()
@@ -158,7 +158,8 @@ def HandleClient(connection):
 
 def GetFile(fileName, connection):
   existsOnServer = True
-
+  fileObj = None
+  
   # If the file exists in fileStorage, then it is already in ./ServerFiles
   if fileName in fileStorage:
     fileObj = fileStorage[fileName]
@@ -172,14 +173,20 @@ def GetFile(fileName, connection):
     existsOnServer = False
 
     global numClients, client1, client2
-    if numClients < 2:
+    if numClients == 2:
       if connection == client1:  # Change this to be the client 2 connection object
         otherClient = client2
       else:
         otherClient = client1
       # Using upload here downloads the file from client 2 onto the server. The file will need to be deleted from the server after client 1 receives it
-      Upload(fileName, otherClient)
 
+      print("DOES FILE EXIST???????\n\n")
+      fileExistsOnOtherClient = otherClient.recv(1024).decode(FORMAT)
+      print(fileExistsOnOtherClient)
+      
+      Upload(fileName, otherClient)
+      
+      
       # fileName will always exist in fileStorage as long as client 2 has the file, because the Upload adds it
       fileObj = fileStorage[fileName]
 
