@@ -158,7 +158,8 @@ def HandleClient(connection):
 
 def GetFile(fileName, connection):
   existsOnServer = True
-
+  fileObj = None
+  
   # If the file exists in fileStorage, then it is already in ./ServerFiles
   if fileName in fileStorage:
     fileObj = fileStorage[fileName]
@@ -170,15 +171,23 @@ def GetFile(fileName, connection):
   # If the file does not exist in fileStorage, then we need client 2 to upload the file to the server temporarily for client 1 to receive it
   else:
     existsOnServer = False
-
+    print("MADE IT ELSE")
+    
     global numClients, client1, client2
-    if numClients < 2:
+    if numClients == 2:
       if connection == client1:  # Change this to be the client 2 connection object
         otherClient = client2
       else:
         otherClient = client1
-      # Using upload here downloads the file from client 2 onto the server. The file will need to be deleted from the server after client 1 receives it
+
+      otherClient.send(bytes(f"CHECK {fileName}".encode(FORMAT)))
       Upload(fileName, otherClient)
+
+      received = otherClient.recv(1024).decode(FORMAT)
+
+      print(f"Received {received}")
+      
+      # Using upload here downloads the file from client 2 onto the server. The file will need to be deleted from the server after client 1 receives it
 
       # fileName will always exist in fileStorage as long as client 2 has the file, because the Upload adds it
       fileObj = fileStorage[fileName]
