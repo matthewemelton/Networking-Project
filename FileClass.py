@@ -1,4 +1,4 @@
-import os
+import os, time, datetime as d
 
 FORMAT = "utf-8"
 
@@ -11,6 +11,9 @@ class File:
         self.fileContents = None
         self.fileBytes = None
         self.fileSize = -1
+        self.statistics = None
+        self.uploadDate = d.datetime.now()
+        
 
     def addFileToServer(self):
         with open(f"./ServerFiles/{self.name}", "w") as f:
@@ -25,3 +28,9 @@ class File:
     def initBytesGivenContent(self, content: str):
         self.fileContents = content
         self.fileBytes = content.encode(FORMAT)
+
+    def loadStatistics(self):
+      self.statistics = f"File Name: {self.name}\nFile Downloads: {self.downloads}\nFile Size: {self.fileSize} bytes\nUpload Date & Time: {self.uploadDate}\n\n"
+
+    def loadFileSize(self):
+      self.fileSize = os.path.getsize(f"./ServerFiles/{self.name}")

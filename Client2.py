@@ -4,8 +4,8 @@ import socket, os, time, datetime
 
 # clientDirectory = Directory()
 
-HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 54321  # The port used by the server
+# HOST = "127.0.0.1"  # The server's hostname or IP address
+# PORT = 54321  # The port used by the server
 FORMAT = 'utf-8' # The encoding format used for the file
 downloadDict = {}
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,10 +40,10 @@ def Upload(fileName):
 
 # Loop indefinitely
 
-def Connect():
+def Connect(HOST, PORT):
   global s
   t0 = time.time() # Start timer
-  
+
   s.connect((HOST, PORT))
   #s.sendall(b"Hello, world")
   #data = s.recv(1024)
@@ -76,51 +76,68 @@ def Delete(fileName):
   t1 = time.time() # End timer
   print(f"DELETE ran for: {t1-t0}\n")
 
-def Dir(fileName):
+def Dir():
   t0 = time.time()
-  # for os.listdir(path):
-  
-  if os.path.isfile(fileName):
-    print("File Name: " + fileName + "\n")
-    print("File Size: " + os.path.getsize(fileName) + "\n")
-    #TODO: figure out how to track upload date and time
-    #TODO: figure out how to track number of downloads
-  else:
-    print("ERROR: file does not exist \n")
+  # for f in os.listdir(path):
+  s.send(b"DIR")
+
+  data = s.recv(1024) # Receive data from the server
+  data = data.decode(FORMAT)
+    
+  print(data)
+
   t1 = time.time()
   print(f"DIR ran for: {t1-t0} \n")
 
 
   
 def Main():
+  
   while True: 
     # Get the commmand and filename (if applicable) from the user
     userInput = input("Enter your command: ")
     command = None
     print(f"\n\n\n{userInput}\n\n\n")
+
+    # separate the user input based on the delimeter (spaces)
+    splitInput = userInput.split()
+    
+    # the first component of the user input should always be the command
+    command = splitInput[0]
     
     # Separate the command and filename into separate variables
-    if userInput != "CONNECT":
-      command, fileName = userInput.split()
+    #if userInput != "DIR":
+    #  command, fileName = userInput.split()
 
-    else:
-      Connect()
+    #else:
+    #  Dir()
       
     # upload a file if that is what the user has commanded
     if command == "UPLOAD":
+      fileName = splitInput[1]
       Upload(fileName)
       
     # download a file from the server if that is what the user commanded
     elif command == "DOWNLOAD":
+      fileName = splitInput[1]
       Download(fileName)
       
     # delete the file specified by the user
     elif command == "DELETE":
+      fileName = splitInput[1]
       Delete(fileName)
    
-    # return the content of the folder
-    elif command == "DIR":
-      Dir(fileName)
+    # connect to the specified host and port
+    elif command == "CONNECT":
+      HOST, PORT = splitInput[1:]
+      Connect(HOST, int(PORT))
+      
+    # print the contents of the server directory
+    elif command == "DIR" :
+      Dir()
+
+    else:
+      print("ERROR: Invalid command")
       
 if __name__ == '__main__':
   Main()
