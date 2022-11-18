@@ -19,3 +19,4 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
   
   s.send(command.encode('utf-8'))
   
+  

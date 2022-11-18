@@ -17,8 +17,9 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 if not os.path.exists("./ServerFiles"):
   os.mkdir("./ServerFiles")
 
-HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
-PORT = 54322  # Port to listen on (non-privileged ports are > 1023)
+# HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
+HOST = '192.168.4.69'
+PORT = 8000  # Port to listen on (non-privileged ports are > 1023)
 fileStorage = {}
 
 
@@ -183,15 +184,38 @@ def GetFile(fileName, connection):
         otherClient = client1
       # Using upload here downloads the file from client 2 onto the server. The file will need to be deleted from the server after client 1 receives it
 
-      print("DOES FILE EXIST???????\n\n")
-      fileExistsOnOtherClient = otherClient.recv(1024).decode(FORMAT)
-      print(fileExistsOnOtherClient)
       
-      Upload(fileName, otherClient)
+      otherClient.send(f"CHECK {fileName}".encode(FORMAT))
+      data = otherClient.recv(1024).decode(FORMAT)
+      splitData = data.split()
+
+      if splitData[0] == "YES":
+        # if it is from the other client then we upload, send data and then delete the file after
+        fileBytes = connection.recv(1024)
+
+        fileStorage[fileName] = File(fileName)
+        fileObj = fileStorage[fileName]
+
+        fileObj.initContentGivenBytes(fileBytes)
+        fileObj.addFileToServer()
+
+        print(f"""
+        {fileObj.name}
+        {fileObj.path}
+        {fileObj.fileSize}
+        {fileObj.downloads}
+        {fileObj.fileContents}
+        """)
+
+        # fileName will always exist in fileStorage as long as client 2 has the file, because the Upload adds it
+        fileObj = fileStorage[fileName]
+
+      else:
+        data = "DNE".encode(FORMAT)
+        connection.send(data)
       
       
-      # fileName will always exist in fileStorage as long as client 2 has the file, because the Upload adds it
-      fileObj = fileStorage[fileName]
+      
 
   return (existsOnServer, fileObj)
 

@@ -13,18 +13,33 @@ waitingOnServer = False
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def ListenForServer(server):
+  global waitingOnServer
   while True:
     data = server.recv(1024)
-    data = data.decode('utf-8')
+    data = data.decode(FORMAT)
     splitData = data.split()
 
     if splitData[0] == "CHECK":
-      Upload(splitData[1])
+      filename = "./Client1Files/" + splitData[1]
+      Check(filename)
+      waitingOnServer = False
+      
 
     else:
       print(f"From Server: {data}")
-      global waitingOnServer
       waitingOnServer = False
+
+def Check(fileName):
+  if os.path.isfile(fileName):
+    with open(fileName, "r") as f:
+      data = f.read() # Read the data from the file
+
+      # Send the info to the server in the format: COMMAND fileName
+      # Spaces are being used as the delimeters
+      s.send(f"YES".encode(FORMAT))
+      s.send(data.encode(FORMAT))
+  else:
+    s.send("NO")
 
 def Upload(fileName):
   global s
@@ -145,6 +160,7 @@ def Main():
       elif command == "DOWNLOAD":
         fileName = splitInput[1]
         Download(fileName)
+        waitingOnServer = False
         
       # delete the file specified by the user
       elif command == "DELETE":
