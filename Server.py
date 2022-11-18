@@ -51,6 +51,9 @@ def Upload(fileName, connection):
   {fileObj.fileContents}
   """)
 
+  data = "File Received".encode('utf-8')
+  connection.send(data)
+
 
 def Download(fileName, connection):
   existsOnServer, fileObj = GetFile(fileName, connection)

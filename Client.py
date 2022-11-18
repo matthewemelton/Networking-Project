@@ -1,6 +1,7 @@
 # this is client 1 for the Fall 2022 CS 371 Project
 
 import socket, os, time, datetime
+import threading, _thread as thread
 
 # clientDirectory = Directory()
 
@@ -8,12 +9,22 @@ import socket, os, time, datetime
 # PORT = 54321  # The port used by the server
 FORMAT = 'utf-8' # The encoding format used for the file
 downloadDict = {}
+waitingOnServer = False
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-def Check(fileName):
-  Upload(fileName)
+def ListenForServer(server):
+  while True:
+    data = server.recv(1024)
+    data = data.decode('utf-8')
+    splitData = data.split()
 
-  s.send("EXISTS".encode(FORMAT))
+    if splitData[0] == "CHECK":
+      Upload(splitData[1])
+
+    else:
+      print(f"From Server: {data}")
+      global waitingOnServer
+      waitingOnServer = False
 
 def Upload(fileName):
   global s
@@ -102,56 +113,59 @@ def Dir():
 
   
 def Main():
+  global waitingOnServer
   
   while True: 
-    # Get the commmand and filename (if applicable) from the user
-    userInput = input("Enter your command: ")
-    command = None
-    print(f"\n\n\n{userInput}\n\n\n")
+    if not waitingOnServer:
+      # Get the commmand and filename (if applicable) from the user
+      userInput = input("Enter your command: ")
+      command = None
+      print(f"\n\n\n{userInput}\n\n\n")
 
-    # separate the user input based on the delimeter (spaces)
-    splitInput = userInput.split()
-    
-    # the first component of the user input should always be the command
-    command = splitInput[0]
-    
-    # Separate the command and filename into separate variables
-    #if userInput != "DIR":
-    #  command, fileName = userInput.split()
+      # separate the user input based on the delimeter (spaces)
+      splitInput = userInput.split()
+      
+      # the first component of the user input should always be the command
+      command = splitInput[0]
+      
+      # Separate the command and filename into separate variables
+      #if userInput != "DIR":
+      #  command, fileName = userInput.split()
 
-    #else:
-    #  Dir()
-      
-    # upload a file if that is what the user has commanded
-    if command == "UPLOAD":
-      fileName = splitInput[1]
-      Upload(fileName)
-      
-    # download a file from the server if that is what the user commanded
-    elif command == "DOWNLOAD":
-      fileName = splitInput[1]
-      Download(fileName)
-      
-    # delete the file specified by the user
-    elif command == "DELETE":
-      fileName = splitInput[1]
-      Delete(fileName)
-      
-    elif command == "CHECK":
-      fileName = splitInput[1]
-      Check(fileName)
-       
-    # connect to the specified host and port
-    elif command == "CONNECT":
-      HOST, PORT = splitInput[1:]
-      Connect(HOST, int(PORT))
-      
-    # print the contents of the server directory
-    elif command == "DIR" :
-      Dir()
+      #else:
+      #  Dir()
+        
+      # upload a file if that is what the user has commanded
+      if command == "UPLOAD":
+        waitingOnServer = True
+        fileName = splitInput[1]
+        Upload(fileName)
+        
+      # download a file from the server if that is what the user commanded
+      elif command == "DOWNLOAD":
+        fileName = splitInput[1]
+        Download(fileName)
+        
+      # delete the file specified by the user
+      elif command == "DELETE":
+        fileName = splitInput[1]
+        Delete(fileName)
+        
+      elif command == "CHECK":
+        fileName = splitInput[1]
+        
+      # connect to the specified host and port
+      elif command == "CONNECT":
+        HOST, PORT = splitInput[1:]
+        Connect(HOST, int(PORT))
+        thread.start_new_thread(ListenForServer, (s, ))
+        
+      # print the contents of the server directory
+      elif command == "DIR" :
+        Dir()
 
-    else:
-      print("ERROR: Invalid command")
+      else:
+        print("ERROR: Invalid command")
       
 if __name__ == '__main__':
   Main()
