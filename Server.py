@@ -12,14 +12,16 @@ numThreads = 0
 clients = {}
 client1 = 0
 client2 = 0
+checking = False
+checkData = 0
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 if not os.path.exists("./ServerFiles"):
   os.mkdir("./ServerFiles")
 
 # HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
-HOST = '192.168.4.69'
-PORT = 8000  # Port to listen on (non-privileged ports are > 1023)
+HOST = '127.0.0.1'
+PORT = 8080  # Port to listen on (non-privileged ports are > 1023)
 fileStorage = {}
 
 
@@ -57,25 +59,32 @@ def Upload(fileName, connection):
 
 
 def Download(fileName, connection):
-  existsOnServer, fileObj = GetFile(fileName, connection)
-  fileObj = fileStorage[fileName]
+  existsOnServer, existsOnClient, fileObj = GetFile(fileName, connection)
 
-  # connection.send("SERVER" if existsOnServer else "CLIENT2")
-  # time.sleep(0.01)
+  # if not existsOnServer and existsOnClient:
+  #   with open(f"./ServerFiles/{fileName}", "r") as f:
+  #     data = f.read()
+  #     fileObj.initBytesGivenContent(data)
 
+  if not existsOnServer and not existsOnClient:
+    connection.send("DNE".encode(FORMAT))
+    return
+
+  print("Sending requested file to client")
   connection.send(fileObj.fileBytes)
 
   fileObj.downloads += 1
 
   print(f"""
-  {fileObj.name}
-  {fileObj.path}
-  {fileObj.fileSize}
-  {fileObj.downloads}
-  {fileObj.fileContents}
+  File: {fileObj.name}
+  File Path: {fileObj.path}
+  Size: {fileObj.fileSize}
+  Downloads: {fileObj.downloads}
+  Content: {fileObj.fileContents}
   """)
 
   # listen for acknowledgement from client
+  print("waiting on ACK from Client")
   ackData = connection.recv(1024)
   # decode acknowledgement
   ackData = ackData.decode(FORMAT)
@@ -83,8 +92,9 @@ def Download(fileName, connection):
   if ackData == "ACK":
     # if the file was not originally on the server, delete it
     if not existsOnServer:
-      if os.path.isfile(fileName):
-        os.remove(fileName)
+      if os.path.isfile(f"./ServerFiles/{fileName}"):
+        os.remove(f"./ServerFiles/{fileName}")
+        print(f"Removed ./ServerFiles/{fileName}")
       else:
         print("ERROR: file does not exist\n")
   else:
@@ -92,7 +102,7 @@ def Download(fileName, connection):
 
 
 def Dir(connection):
-  filesInFolder = os.listdir(f'./ServerFiles')
+  filesInFolder = os.listdir('./ServerFiles')
   print(filesInFolder)
 
   statistics = ""
@@ -134,10 +144,12 @@ def HandleClient(connection):
     data = connection.recv(1024)
     data = data.decode(FORMAT)
     print(f"\n\n{data}\n\n")
-
+    # Split the message from the client using a space as the delimeter
     clientTransmission = data.split()
+    # the first chunk of the message from the client should always be the command keyword
     command = clientTransmission[0]
 
+    # Check which command keyword was send by the client, calling the appropriate helper function
     if command == "UPLOAD":
       fileName = clientTransmission[1]
       Upload(fileName, connection)
@@ -159,15 +171,21 @@ def HandleClient(connection):
       connection.close()
       break
 
+    else:
+      print("ERROR: Invalid command keyword received\n")
+
 
 def GetFile(fileName, connection):
+  # boolean value indicates whether the file exists on the server
   existsOnServer = True
+  existsOnClient = False
   fileObj = None
-  
+
   # If the file exists in fileStorage, then it is already in ./ServerFiles
   if fileName in fileStorage:
     fileObj = fileStorage[fileName]
 
+    # open the file and put all of the data into fileObj
     with open(f"./ServerFiles/{fileName}", "r") as f:
       data = f.read()
       fileObj.initBytesGivenContent(data)
@@ -176,7 +194,9 @@ def GetFile(fileName, connection):
   else:
     existsOnServer = False
 
+    # send the file to the client
     global numClients, client1, client2
+    # check if there are 2 clients connected
     if numClients == 2:
       if connection == client1:  # Change this to be the client 2 connection object
         otherClient = client2
@@ -184,40 +204,33 @@ def GetFile(fileName, connection):
         otherClient = client1
       # Using upload here downloads the file from client 2 onto the server. The file will need to be deleted from the server after client 1 receives it
 
-      
+      print("FILE NOT FOUND: Checking the other client for the file...\n")
+
+      s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      s2.bind((HOST, PORT + 1))
+      s2.listen(5)
+      print("Post listen, pre accept")
       otherClient.send(f"CHECK {fileName}".encode(FORMAT))
-      data = otherClient.recv(1024).decode(FORMAT)
-      splitData = data.split()
 
-      if splitData[0] == "YES":
-        # if it is from the other client then we upload, send data and then delete the file after
-        fileBytes = connection.recv(1024)
+      c2, addr = s2.accept()
 
+      print(f"Sent CHECK {fileName}")
+
+      result = c2.recv(1024).decode(FORMAT)
+
+      if result == "YES":
+        existsOnClient = True
+        # write the new file
+        fileBytes = c2.recv(1024)
         fileStorage[fileName] = File(fileName)
         fileObj = fileStorage[fileName]
 
         fileObj.initContentGivenBytes(fileBytes)
-        fileObj.addFileToServer()
 
-        print(f"""
-        {fileObj.name}
-        {fileObj.path}
-        {fileObj.fileSize}
-        {fileObj.downloads}
-        {fileObj.fileContents}
-        """)
+        with open(f"./ServerFiles/{fileName}", "w") as f:
+          f.write(fileObj.fileContents)
 
-        # fileName will always exist in fileStorage as long as client 2 has the file, because the Upload adds it
-        fileObj = fileStorage[fileName]
-
-      else:
-        data = "DNE".encode(FORMAT)
-        connection.send(data)
-      
-      
-      
-
-  return (existsOnServer, fileObj)
+  return (existsOnServer, existsOnClient, fileObj)
 
 
 def Main():
