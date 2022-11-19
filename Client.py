@@ -10,39 +10,37 @@ import threading, _thread as thread
 FORMAT = "utf-8"  # The encoding format used for the file
 downloadDict = {}
 waitingOnServer = False
-dirData = 0
 HOST, PORT = "127.0.0.1", 8000
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-if not os.path.exists("./Client1Files"):
-  os.mkdir("./Client1Files")
+if not os.path.exists("./ClientFiles"):
+  os.mkdir("./ClientFiles")
 
 
-def ListenForServer(server):
-  global waitingOnServer, dirData
-
-  while True:
-    data = server.recv(1024)
-    data = data.decode(FORMAT)
-    print(data)
-    splitData = data.split()
-
-    if splitData[0] == "CHECK":
-      waitingOnServer = True
-      filename = "./Client1Files/" + splitData[1]
-
-      Check(filename)
-      waitingOnServer = False
-      time.sleep(1)
-    else:
-      dirData = data
-    
-
-
-def Check(fileName):
-  global HOST, PORT
+def ListenForServer():
+  time.sleep(0.5)
   s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   s2.connect((HOST, PORT + 1))
+  global waitingOnServer
+  while True:
+    if waitingOnServer:
+      data = s2.recv(1024)
+      data = data.decode(FORMAT)
+      print(f"[{data}]")
+      splitData = data.split()
+  
+      if splitData[0] == "CHECK":
+        filename = "./ClientFiles/" + splitData[1]
+  
+        Check(filename, s2)
+        waitingOnServer = False
+        time.sleep(1)
+
+
+
+def Check(fileName, s2):
+  global HOST, PORT
+  
 
   if os.path.isfile(fileName):
     with open(fileName, "r") as f:
@@ -61,7 +59,7 @@ def Check(fileName):
 
 def Upload(fileName):
   global s
-  filePath = f"./Client1Files/{fileName}"
+  filePath = f"./ClientFiles/{fileName}"
   t0 = time.time()  # Start timer
   # Check if the user provided a valid file name
 
@@ -118,9 +116,9 @@ def Download(fileName):
 
     return
 
-  print(f"THIS IS THE DATA \n{data}")
+  print("File recieved from server")
 
-  with open(f"./Client1Files/{fileName}", "w") as f:
+  with open(f"./ClientFiles/{fileName}", "w") as f:
     f.write(data)  # Write the data received from the server to the new file
 
   s.send("ACK".encode(FORMAT))  # Send ACK to server
@@ -143,17 +141,15 @@ def Delete(fileName):
 
 
 def Dir():
-  global dirData
   t0 = time.time()  # Start timer
 
   # Send the DIR command to the server
   s.send(b"DIR")
 
-  time.sleep(0.2)
-  # data = s.recv(1024)  # Receive data from the server
-  # data = data.decode(FORMAT)
+  data = s.recv(1024)  # Receive data from the server
+  data = data.decode(FORMAT)
 
-  print(dirData)  # Print data to user on client machine
+  print(data)  # Print data to user on client machine
 
   t1 = time.time()  # End timer
   print(f"DIR ran for: {t1-t0} \n")
@@ -190,6 +186,7 @@ def Main():
       # download a file from the server if that is what the user commanded
       elif command == "DOWNLOAD":
         fileName = splitInput[1]
+        waitingOnServer = True
         Download(fileName)
         waitingOnServer = False
 
@@ -207,7 +204,7 @@ def Main():
         HOST, PORT = splitInput[1:]
         PORT = int(PORT)
         Connect(HOST, PORT)
-        thread.start_new_thread(ListenForServer, (s, ))
+        thread.start_new_thread(ListenForServer, ())
 
       # print the contents of the server directory
       elif command == "DIR":

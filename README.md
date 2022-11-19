@@ -7,6 +7,8 @@ This project consists of 3 files, Server.py, Client.py, and FileClass.py.
 To test these programs using a single machine, you can use 127.0.0.1 (localhost) as the host
 and the transmissions will loop back.
 
+
+
 Server.py: 
 This program should run on the server machine. It makes a file (./ServerFiles) to hold the files the server receives from the client and this is where any files the server is supposed to start with should be placed. It can use any non-privileged port. The program works as follows:
 - Beginning in the Main function, the server binds a socket to the desired host and port
