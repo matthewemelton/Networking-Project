@@ -125,8 +125,6 @@ def Delete(fileName, connection):
     else:
         print("ERROR: file does not exist\n")
 
-    connection.send("ACK".encode(FORMAT))
-
 
 def HandleClient(connection):
     # initalize the client and give the client an ID
