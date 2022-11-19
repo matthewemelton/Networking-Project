@@ -101,9 +101,11 @@ def Download(fileName):
     t0 = time.time()  # Start timer
     s.send("DOWNLOAD ".encode(FORMAT) + fileName.encode(FORMAT))
 
+    print("waiting for data\n")
     data = s.recv(1024)  # Receive data from the server
     data = data.decode(FORMAT)
-    print(data)
+    print(f"received data {data}\n")
+  
     if data == "DNE":
         print("File not found on server or client 2")
         t1 = time.time()
@@ -130,19 +132,6 @@ def Delete(fileName):
 
     # Send the DELETE command to the server with the file name
     s.send(b"DELETE " + fileName.encode(FORMAT))
-
-    data = s.recv(1024)  # Receive ACK from the server
-    data = data.decode(FORMAT)
-
-    print(data)
-
-    # check if proper ACK has been received
-    if data == "ACK":
-        print(
-            f"{fileName} has been deleted from the ServerFiles folder on the server.\n"
-        )
-    else:
-        print("ERROR: no ACK received from server\n")
 
     t1 = time.time()  # End timer
     print(f"DELETE ran for: {t1-t0}\n")

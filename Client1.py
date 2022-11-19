@@ -101,9 +101,11 @@ def Download(fileName):
     t0 = time.time()  # Start timer
     s.send("DOWNLOAD ".encode(FORMAT) + fileName.encode(FORMAT))
 
+    print("waiting for data\n")
     data = s.recv(1024)  # Receive data from the server
     data = data.decode(FORMAT)
-    print(data)
+    print(f"received data {data}\n")
+  
     if data == "DNE":
         print("File not found on server or client 2")
         t1 = time.time()
@@ -181,7 +183,9 @@ def Main():
             # download a file from the server if that is what the user commanded
             elif command == "DOWNLOAD":
                 fileName = splitInput[1]
+                waitingOnServer = True
                 Download(fileName)
+                waitingOnServer = False
 
             # delete the file specified by the user
             elif command == "DELETE":

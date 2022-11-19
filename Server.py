@@ -70,8 +70,9 @@ def Download(fileName, connection):
         return
 
     print("Sending requested file to client")
+    time.sleep(0.01)
     connection.send(fileObj.fileBytes)
-
+    time.sleep(0.01)
     fileObj.downloads += 1
 
     print(
