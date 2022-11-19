@@ -10,204 +10,211 @@ import threading, _thread as thread
 FORMAT = "utf-8"  # The encoding format used for the file
 downloadDict = {}
 waitingOnServer = False
+dirData = 0
 HOST, PORT = "127.0.0.1", 8000
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 if not os.path.exists("./Client2Files"):
-    os.mkdir("./Client2Files")
+  os.mkdir("./Client2Files")
 
 
 def ListenForServer(server):
-    global waitingOnServer
+  global waitingOnServer, dirData
 
-    while True:
-        data = server.recv(1024)
-        data = data.decode(FORMAT)
-        splitData = data.split()
+  while True:
+    data = server.recv(1024)
+    data = data.decode(FORMAT)
+    splitData = data.split()
 
-        if splitData[0] == "CHECK":
-            waitingOnServer = True
-            filename = "./Client2Files/" + splitData[1]
+    if splitData[0] == "CHECK":
+      waitingOnServer = True
+      filename = "./Client2Files/" + splitData[1]
 
-            Check(filename)
-            waitingOnServer = False
+      Check(filename)
+      waitingOnServer = False
+      time.sleep(1)
+    else:
+      dirData = data
+    
 
 
 def Check(fileName):
-    global HOST, PORT
-    s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s2.connect((HOST, PORT + 1))
+  global HOST, PORT
+  s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  s2.connect((HOST, PORT + 1))
 
-    if os.path.isfile(fileName):
-        with open(fileName, "r") as f:
-            data = f.read()  # Read the data from the file
+  if os.path.isfile(fileName):
+    with open(fileName, "r") as f:
+      data = f.read()  # Read the data from the file
 
-            # Send the info to the server in the format: COMMAND fileName
-            # Spaces are being used as the delimeters
-            s2.send("YES".encode(FORMAT))
-            time.sleep(
-                0.01
-            )  # This sleep ensures that they get sent as seperate transmissions
-            s2.send(data.encode(FORMAT))
-    else:
-        s2.send("NO".encode(FORMAT))
-
+      # Send the info to the server in the format: COMMAND fileName
+      # Spaces are being used as the delimeters
+      s2.send("YES".encode(FORMAT))
+      time.sleep(
+        0.01
+      )  # This sleep ensures that they get sent as seperate transmissions
+      s2.send(data.encode(FORMAT))
+  else:
+    s2.send("NO".encode(FORMAT))
 
 
 def Upload(fileName):
-    global s
-    filePath = f"./Client2Files/{fileName}"
-    t0 = time.time()  # Start timer
-    # Check if the user provided a valid file name
+  global s
+  filePath = f"./Client2Files/{fileName}"
+  t0 = time.time()  # Start timer
+  # Check if the user provided a valid file name
 
-    if os.path.isfile(filePath):
+  if os.path.isfile(filePath):
 
-        # Open the file
-        with open(filePath, "r") as f:
-            data = f.read()  # Read the data from the file
+    # Open the file
+    with open(filePath, "r") as f:
+      data = f.read()  # Read the data from the file
 
-            # Send the info to the server in the format: COMMAND fileName
-            # Spaces are being used as the delimeters
-            s.send(b"UPLOAD " + fileName.encode(FORMAT))
-            time.sleep(
-                0.01
-            )  # This sleep ensures that they get sent as seperate transmissions
-            # Send the data
-            s.send(data.encode(FORMAT))
+      # Send the info to the server in the format: COMMAND fileName
+      # Spaces are being used as the delimeters
+      s.send(b"UPLOAD " + fileName.encode(FORMAT))
+      time.sleep(
+        0.01
+      )  # This sleep ensures that they get sent as seperate transmissions
+      # Send the data
+      s.send(data.encode(FORMAT))
 
-    # If not, give an error message
-    else:
-        print("ERROR: file does not exist\n")
+  # If not, give an error message
+  else:
+    print("ERROR: file does not exist\n")
 
-    t1 = time.time()  # End timer
-    print(f"UPLOAD ran for: {t1-t0} \n")
+  t1 = time.time()  # End timer
+  print(f"UPLOAD ran for: {t1-t0} \n")
 
 
 # Loop indefinitely
 
 
 def Connect(HOST, PORT):
-    global s
-    t0 = time.time()  # Start timer
+  global s
+  t0 = time.time()  # Start timer
 
-    s.connect((HOST, PORT))
+  s.connect((HOST, PORT))
 
-    t1 = time.time()  # End timer
-    print(f"CONNECT ran for: {t1-t0}\n")  # Print how long the task took
+  t1 = time.time()  # End timer
+  print(f"CONNECT ran for: {t1-t0}\n")  # Print how long the task took
 
 
 def Download(fileName):
-    global s
-    t0 = time.time()  # Start timer
-    s.send("DOWNLOAD ".encode(FORMAT) + fileName.encode(FORMAT))
+  global s
+  t0 = time.time()  # Start timer
+  s.send("DOWNLOAD ".encode(FORMAT) + fileName.encode(FORMAT))
 
-    print("waiting for data\n")
-    data = s.recv(1024)  # Receive data from the server
-    data = data.decode(FORMAT)
-    print(f"received data {data}\n")
-  
-    if data == "DNE":
-        print("File not found on server or client 2")
-        t1 = time.time()
-        print(f"DOWNLOAD ran for: {t1-t0} \n")
+  print("waiting for data\n")
+  data = s.recv(1024)  # Receive data from the server
+  data = data.decode(FORMAT)
+  print(f"received data {data}\n")
 
-        return
-
-    print(f"THIS IS THE DATA \n{data}")
-
-    with open(f"./Client2Files/{fileName}", "w") as f:
-        f.write(data)  # Write the data received from the server to the new file
-
-    s.send("ACK".encode(FORMAT))  # Send ACK to server
-    t1 = time.time()  # End timer
+  if data == "DNE":
+    print("File not found on server or client 2")
+    t1 = time.time()
     print(f"DOWNLOAD ran for: {t1-t0} \n")
+
+    return
+
+  print(f"THIS IS THE DATA \n{data}")
+
+  with open(f"./Client2Files/{fileName}", "w") as f:
+    f.write(data)  # Write the data received from the server to the new file
+
+  s.send("ACK".encode(FORMAT))  # Send ACK to server
+  t1 = time.time()  # End timer
+  print(f"DOWNLOAD ran for: {t1-t0} \n")
 
 
 def Delete(fileName):
-    t0 = time.time()  # Start timer
-    # if os.path.isfile(fileName):
-    #   os.remove(fileName)
-    # else:
-    #   print("ERROR: file does not exist\n")
+  t0 = time.time()  # Start timer
+  # if os.path.isfile(fileName):
+  #   os.remove(fileName)
+  # else:
+  #   print("ERROR: file does not exist\n")
 
-    # Send the DELETE command to the server with the file name
-    s.send(b"DELETE " + fileName.encode(FORMAT))
+  # Send the DELETE command to the server with the file name
+  s.send(b"DELETE " + fileName.encode(FORMAT))
 
-    t1 = time.time()  # End timer
-    print(f"DELETE ran for: {t1-t0}\n")
+  t1 = time.time()  # End timer
+  print(f"DELETE ran for: {t1-t0}\n")
 
 
 def Dir():
-    t0 = time.time()  # Start timer
+  global dirData
+  t0 = time.time()  # Start timer
 
-    # Send the DIR command to the server
-    s.send(b"DIR")
+  # Send the DIR command to the server
+  s.send(b"DIR")
 
-    data = s.recv(1024)  # Receive data from the server
-    data = data.decode(FORMAT)
+  time.sleep(0.2)
+  # data = s.recv(1024)  # Receive data from the server
+  # data = data.decode(FORMAT)
 
-    print(data)  # Print data to user on client machine
+  print(dirData)  # Print data to user on client machine
 
-    t1 = time.time()  # End timer
-    print(f"DIR ran for: {t1-t0} \n")
+  t1 = time.time()  # End timer
+  print(f"DIR ran for: {t1-t0} \n")
 
 
 def Main():
-    global waitingOnServer
+  global waitingOnServer
 
-    while True:
-        if not waitingOnServer:
-            # Get the commmand and filename (if applicable) from the user
-            userInput = input("Enter your command: ")
-            command = None
-            print(f"\n\n\n{userInput}\n\n\n")
+  while True:
+    if not waitingOnServer:
+      # Get the commmand and filename (if applicable) from the user
+      userInput = input("Enter your command: ")
+      command = None
+      print(f"\n\n\n{userInput}\n\n\n")
 
-            # separate the user input based on the delimeter (spaces)
-            splitInput = userInput.split()
+      # separate the user input based on the delimeter (spaces)
+      splitInput = userInput.split()
 
-            # the first component of the user input should always be the command
-            command = splitInput[0]
+      # the first component of the user input should always be the command
+      command = splitInput[0]
 
-            # Separate the command and filename into separate variables
-            # if userInput != "DIR":
-            #  command, fileName = userInput.split()
+      # Separate the command and filename into separate variables
+      # if userInput != "DIR":
+      #  command, fileName = userInput.split()
 
-            # else:
-            #  Dir()
+      # else:
+      #  Dir()
 
-            # upload a file if that is what the user has commanded
-            if command == "UPLOAD":
-                fileName = splitInput[1]
-                Upload(fileName)
+      # upload a file if that is what the user has commanded
+      if command == "UPLOAD":
+        fileName = splitInput[1]
+        Upload(fileName)
 
-            # download a file from the server if that is what the user commanded
-            elif command == "DOWNLOAD":
-                fileName = splitInput[1]
-                Download(fileName)
+      # download a file from the server if that is what the user commanded
+      elif command == "DOWNLOAD":
+        fileName = splitInput[1]
+        Download(fileName)
+        waitingOnServer = False
 
-            # delete the file specified by the user
-            elif command == "DELETE":
-                fileName = splitInput[1]
-                Delete(fileName)
+      # delete the file specified by the user
+      elif command == "DELETE":
+        fileName = splitInput[1]
+        Delete(fileName)
 
-            elif command == "CHECK":
-                fileName = splitInput[1]
+      elif command == "CHECK":
+        fileName = splitInput[1]
 
-            # connect to the specified host and port
-            elif command == "CONNECT":
-                global HOST, PORT
-                HOST, PORT = splitInput[1:]
-                PORT = int(PORT)
-                Connect(HOST, PORT)
-                thread.start_new_thread(ListenForServer, (s,))
+      # connect to the specified host and port
+      elif command == "CONNECT":
+        global HOST, PORT
+        HOST, PORT = splitInput[1:]
+        PORT = int(PORT)
+        Connect(HOST, PORT)
+        thread.start_new_thread(ListenForServer, (s, ))
 
-            # print the contents of the server directory
-            elif command == "DIR":
-                Dir()
+      # print the contents of the server directory
+      elif command == "DIR":
+        Dir()
 
-            else:
-                print("ERROR: Invalid command")
+      else:
+        print("ERROR: Invalid command")
 
 
 if __name__ == "__main__":
-    Main()
+  Main()

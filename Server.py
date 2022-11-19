@@ -114,7 +114,7 @@ def Dir(connection):
         fileObj.loadStatistics()
         statistics += fileObj.statistics
 
-    connection.sendall(statistics.encode(FORMAT))
+    connection.send(statistics.encode(FORMAT))
 
 
 def Delete(fileName, connection):
