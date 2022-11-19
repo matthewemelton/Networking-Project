@@ -10,7 +10,7 @@ import threading, _thread as thread
 FORMAT = "utf-8"  # The encoding format used for the file
 downloadDict = {}
 waitingOnServer = False
-HOST, PORT = "127.0.0.1", 8080
+HOST, PORT = "127.0.0.1", 8000
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 if not os.path.exists("./Client2Files"):
@@ -28,10 +28,8 @@ def ListenForServer(server):
         if splitData[0] == "CHECK":
             waitingOnServer = True
             filename = "./Client2Files/" + splitData[1]
-            print("Listen for Server pre check")
 
             Check(filename)
-
             waitingOnServer = False
 
 
@@ -40,7 +38,6 @@ def Check(fileName):
     s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s2.connect((HOST, PORT + 1))
 
-    print("Socket connected in Check function\n")
     if os.path.isfile(fileName):
         with open(fileName, "r") as f:
             data = f.read()  # Read the data from the file
@@ -55,7 +52,6 @@ def Check(fileName):
     else:
         s2.send("NO".encode(FORMAT))
 
-    print("END OF CHECK\n\n")
 
 
 def Upload(fileName):
@@ -107,7 +103,7 @@ def Download(fileName):
 
     data = s.recv(1024)  # Receive data from the server
     data = data.decode(FORMAT)
-
+    print(data)
     if data == "DNE":
         print("File not found on server or client 2")
         t1 = time.time()
@@ -133,10 +129,12 @@ def Delete(fileName):
     #   print("ERROR: file does not exist\n")
 
     # Send the DELETE command to the server with the file name
-    s.send(b"DELETE " + bytes(fileName.encode(FORMAT)))
+    s.send(b"DELETE " + fileName.encode(FORMAT))
 
     data = s.recv(1024)  # Receive ACK from the server
     data = data.decode(FORMAT)
+
+    print(data)
 
     # check if proper ACK has been received
     if data == "ACK":
