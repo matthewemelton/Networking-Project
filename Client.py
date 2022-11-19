@@ -23,7 +23,6 @@ def ListenForServer():
   s2.connect((HOST, PORT + 1))
   global waitingOnServer
   while True:
-    if waitingOnServer:
       data = s2.recv(1024)
       data = data.decode(FORMAT)
       print(f"[{data}]")
@@ -33,7 +32,6 @@ def ListenForServer():
         filename = "./ClientFiles/" + splitData[1]
   
         Check(filename, s2)
-        waitingOnServer = False
         time.sleep(1)
 
 

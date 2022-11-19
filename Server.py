@@ -56,8 +56,8 @@ def Upload(fileName, connection):
   """)
 
 
-def Download(fileName, connection):
-  existsOnServer, existsOnClient, fileObj = GetFile(fileName, connection)
+def Download(fileName, connection, checkConnection):
+  existsOnServer, existsOnClient, fileObj = GetFile(fileName, connection, checkConnection)
 
   # if not existsOnServer and existsOnClient:
   #   with open(f"./ServerFiles/{fileName}", "r") as f:
@@ -69,9 +69,9 @@ def Download(fileName, connection):
     return
 
   print("Sending requested file to client")
-  time.sleep(0.01)
+
   connection.send(fileObj.fileBytes)
-  time.sleep(0.01)
+  
   fileObj.downloads += 1
 
   print(f"""
@@ -125,7 +125,7 @@ def Delete(fileName, connection):
     print("ERROR: file does not exist\n")
 
 
-def HandleClient(connection):
+def HandleClient(connection, checkConnection):
   # initalize the client and give the client an ID
   global numClients, clients, client1, client2
   print("Client Connected\n")
@@ -151,7 +151,7 @@ def HandleClient(connection):
 
     elif command == "DOWNLOAD":
       fileName = clientTransmission[1]
-      Download(fileName, connection)
+      Download(fileName, connection, checkConnection)
 
     elif command == "DIR":
       Dir(connection)
@@ -170,7 +170,7 @@ def HandleClient(connection):
       print("ERROR: Invalid command keyword received\n")
 
 
-def GetFile(fileName, connection):
+def GetFile(fileName, connection, checkConnection):
   # boolean value indicates whether the file exists on the server
   existsOnServer = True
   existsOnClient = False
@@ -193,7 +193,7 @@ def GetFile(fileName, connection):
     global numClients, client1, client2
     # check if there are 2 clients connected
     if numClients == 2:
-      if (connection == client1
+      if (checkConnection == client1
           ):  # Change this to be the client 2 connection object
         otherClient = client2
       else:
@@ -252,7 +252,7 @@ def Main():
     numClients += 1
     clients[numClients] = checkConn
 
-    thread.start_new_thread(HandleClient, (conn, ))
+    thread.start_new_thread(HandleClient, (conn, ), checkConn)
     numThreads += 1
 
   # server should never reach this line of code unless we break from the above loop
