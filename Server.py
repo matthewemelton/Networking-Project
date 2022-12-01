@@ -68,10 +68,8 @@ def Upload(fileName, connection):
 def Download(fileName, connection, checkConnection):
     if os.path.exists(f"./ServerFiles/{fileName}"):
         existsOnServer = True
-    # else:
-    #     existsOnServer, existsOnClient, fileObj = GetFile(
-    #         fileName, connection, checkConnection
-    #     )
+    else:
+        existsOnServer, existsOnClient, fileObj = GetFile(fileName, connection, checkConnection)
 
     # if not existsOnServer and existsOnClient:
     #   with open(f"./ServerFiles/{fileName}", "r") as f:
