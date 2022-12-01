@@ -23,9 +23,12 @@ class File:
         self.fileSize = os.path.getsize(f"./ServerFiles/{self.name}")
       else:
         with open(f"./ServerFiles/{self.name}", "wb") as f:
+            print("Writing audio bytes to file")
             f.write(self.fileBytes)
 
         self.fileSize = os.path.getsize(f"./ServerFiles/{self.name}")
+        print(f"Audio bytes written with file size of {self.fileSize}")
+
 
     def initContentGivenBytes(self, bytes: bytes):
         self.fileBytes = bytes

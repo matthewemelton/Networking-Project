@@ -77,7 +77,7 @@ def Upload(fileName):
       if fileName.endswith(".txt"):
         s.send(data.encode(FORMAT))
       
-      elif fileName.endswith(".mp3"):
+      else:
         # something here
         data = bytes(data)
         tempBytes = b""
@@ -93,10 +93,8 @@ def Upload(fileName):
           tempBytes += bytes(byte)
           
         s.send(tempBytes)
+
         
-      elif fileName.endswith(".mp4"):
-        # If not, give an error message
-        data = None
   else:
       print("ERROR: file does not exist\n")
       
