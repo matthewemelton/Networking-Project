@@ -61,25 +61,31 @@ def Upload(fileName):
   t0 = time.time()  # Start timer
   # Check if the user provided a valid file name
 
-  if os.path.isfile(filePath):
+    if os.path.isfile(filePath):
 
     # Open the file
-    with open(filePath, "r") as f:
-      data = f.read()  # Read the data from the file
-
-      # Send the info to the server in the format: COMMAND fileName
-      # Spaces are being used as the delimeters
-      s.send(b"UPLOAD " + fileName.encode(FORMAT))
-      time.sleep(
-        0.01
-      )  # This sleep ensures that they get sent as seperate transmissions
-      # Send the data
-      s.send(data.encode(FORMAT))
-
-  # If not, give an error message
-  else:
-    print("ERROR: file does not exist\n")
-
+      with open(filePath, "r") as f:
+      
+      if fileName.endswith(".txt"):
+        data = f.read()  # Read the data from the file
+        # Send the info to the server in the format: COMMAND fileName
+        # Spaces are being used as the delimeters
+        s.send(b"UPLOAD " + fileName.encode(FORMAT))
+        time.sleep(
+          0.01
+        )  # This sleep ensures that they get sent as seperate transmissions
+        # Send the data
+        s.send(data.encode(FORMAT))
+      
+      elif fileName.endswith(".mp3"):
+        # something here
+        data = bytes(f.read())
+        
+      elif fileName.endswith(".mp4"):
+        # If not, give an error message
+    else:
+      print("ERROR: file does not exist\n")
+      
   t1 = time.time()  # End timer
   print(f"UPLOAD ran for: {t1-t0} \n")
 
@@ -161,7 +167,7 @@ def Main():
       # Get the commmand and filename (if applicable) from the user
       userInput = input("Enter your command: ")
       command = None
-      print(f"\n\n\n{userInput}\n\n\n")
+      
 
       # separate the user input based on the delimeter (spaces)
       splitInput = userInput.split()
@@ -169,6 +175,10 @@ def Main():
       # the first component of the user input should always be the command
       command = splitInput[0]
 
+      if len(splitInput) > 4:
+        print("ERROR: too many files requested")
+      else:
+        numFiles = len(splitInput) - 1
       # Separate the command and filename into separate variables
       # if userInput != "DIR":
       #  command, fileName = userInput.split()
@@ -178,8 +188,10 @@ def Main():
 
       # upload a file if that is what the user has commanded
       if command == "UPLOAD":
-        fileName = splitInput[1]
-        Upload(fileName)
+        files = splitInput[1:]
+        for file in files:
+          Upload(file)
+          time.sleep(0.3)
 
       # download a file from the server if that is what the user commanded
       elif command == "DOWNLOAD":

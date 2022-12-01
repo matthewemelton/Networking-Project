@@ -1,0 +1,18 @@
+[[package]]
+name = "pyaudio"
+version = "0.2.12"
+description = "Cross-platform audio I/O with PortAudio"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.extras]
+test = ["numpy"]
+
+[metadata]
+lock-version = "1.1"
+python-versions = "^3.8"
+content-hash = "34853e55b35d0e89bd227908522fe7e7a9c9b9e5eac3369c5741197dd17fbdf7"
+
+[metadata.files]
+pyaudio = []
