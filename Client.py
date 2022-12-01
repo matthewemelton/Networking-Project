@@ -61,29 +61,43 @@ def Upload(fileName):
   t0 = time.time()  # Start timer
   # Check if the user provided a valid file name
 
-    if os.path.isfile(filePath):
+  if os.path.isfile(filePath):
 
     # Open the file
-      with open(filePath, "r") as f:
-      
-      if fileName.endswith(".txt"):
-        data = f.read()  # Read the data from the file
+    with open(filePath, "rb") as f:
+      data = f.read()  # Read the data from the file
         # Send the info to the server in the format: COMMAND fileName
         # Spaces are being used as the delimeters
-        s.send(b"UPLOAD " + fileName.encode(FORMAT))
-        time.sleep(
-          0.01
-        )  # This sleep ensures that they get sent as seperate transmissions
-        # Send the data
+      s.send(b"UPLOAD " + fileName.encode(FORMAT))
+      time.sleep(
+        0.01
+      )  # This sleep ensures that they get sent as seperate transmissions
+      # Send the data
+  
+      if fileName.endswith(".txt"):
         s.send(data.encode(FORMAT))
       
       elif fileName.endswith(".mp3"):
         # something here
-        data = bytes(f.read())
+        data = bytes(data)
+        tempBytes = b""
+
+        numTransactionsNeeded = str(len(data) % 1024)
+        s.send(numTransactionsNeeded.encode(FORMAT))
+        
+        for i, byte in enumerate(data):
+          if (i % 1024) == 0:
+            s.send(tempBytes)
+            tempBytes = b""
+            
+          tempBytes += bytes(byte)
+          
+        s.send(tempBytes)
         
       elif fileName.endswith(".mp4"):
         # If not, give an error message
-    else:
+        data = None
+  else:
       print("ERROR: file does not exist\n")
       
   t1 = time.time()  # End timer

@@ -38,24 +38,34 @@ def OnStart():
 
 
 def Upload(fileName, connection):
-
-    fileBytes = connection.recv(1024)
-
-    fileStorage[fileName] = File(fileName)
-    fileObj = fileStorage[fileName]
-
-    fileObj.initContentGivenBytes(fileBytes)
-    fileObj.addFileToServer()
-
-    print(
-        f"""
-  {fileObj.name}
-  {fileObj.path}
-  {fileObj.fileSize}
-  {fileObj.downloads}
-  {fileObj.fileContents}
-  """
-    )
+    fileBytes = b""
+    numTransactions = int(connection.recv(1024).decode(FORMAT))
+    print(numTransactions)
+  
+    for transaction in range(numTransactions):
+      fileBytes += connection.recv(4096)
+  
+    if fileName.endswith(".txt"):
+      fileStorage[fileName] = File(fileName)
+      fileObj = fileStorage[fileName]
+  
+      fileObj.initContentGivenBytes(fileBytes)
+      fileObj.addFileToServer()
+  
+      print(
+          f"""
+    {fileObj.name}
+    {fileObj.path}
+    {fileObj.fileSize}
+    {fileObj.downloads}
+    {fileObj.fileContents}
+    """
+      )
+    else:
+      fileStorage[fileName] = File(fileName)
+      fileObj = fileStorage[fileName]
+      fileObj.fileBytes = fileBytes
+      fileObj.addFileToServer(False)
 
 
 def Download(fileName, connection, checkConnection):
@@ -173,7 +183,8 @@ def HandleClient(connection, checkConnection):
             break
 
         else:
-            print("ERROR: Invalid command keyword received\n")
+            # print("ERROR: Invalid command keyword received\n")
+            a = 1
 
 
 def GetFile(fileName, connection, checkConnection):
