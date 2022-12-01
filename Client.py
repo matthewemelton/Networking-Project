@@ -1,8 +1,8 @@
 # this is client 1 for the Fall 2022 CS 371 Project
 
-import socket, os, time, datetime
+import socket, os, time, datetime, sys
 import threading, _thread as thread
-import pyaudio, wave, pickle, struct
+# import pyaudio, wave, pickle, struct
 
 # clientDirectory = Directory()
 
@@ -11,8 +11,8 @@ import pyaudio, wave, pickle, struct
 FORMAT = "utf-8"  # The encoding format used for the file
 downloadDict = {}
 waitingOnServer = False
-HOST, PORT = "127.0.0.1", 8000
-CHUNK = 1024
+HOST, PORT = "127.0.0.1", 8001
+CHUNK = 2056
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 if not os.path.exists("./ClientFiles"):
@@ -43,16 +43,16 @@ def Check(fileName, s2):
   
 
   if os.path.isfile(fileName):
-    with open(fileName, "r") as f:
-      data = f.read()  # Read the data from the file
+    # Send the info to the server in the format: COMMAND fileName
+    # Spaces are being used as the delimeters
+    s2.send("YES".encode(FORMAT))
+    time.sleep(
+      0.01
+    )  # This sleep ensures that they get sent as seperate transmissions
 
-      # Send the info to the server in the format: COMMAND fileName
-      # Spaces are being used as the delimeters
-      s2.send("YES".encode(FORMAT))
-      time.sleep(
-        0.01
-      )  # This sleep ensures that they get sent as seperate transmissions
-      s2.send(data.encode(FORMAT))
+    UploadMediaFile(fileName)
+      
+      
   else:
     s2.send("NO".encode(FORMAT))
 
@@ -82,27 +82,52 @@ def UploadTextFile(fileName):
   t1 = time.time()  # End timer
   print(f"UPLOAD ran for: {t1-t0} \n")
 
-def UploadAudioFile(filename):
-  s.send(b"UPLOAD " + filename.encode(FORMAT))
-  time.sleep(
-    0.01
-  )  # This sleep ensures that they get sent as seperate transmissions
+def UploadMediaFile(fileName):
+  global s
+  filePath = f"./ClientFiles/{fileName}"
+  t0 = time.time()  # Start timer
 
-  pya = pyaudio.PyAudio()
-  wf = wave.open("ClientFiles/" + filename, 'rb')
-  stream = pya.open(format=pya.get_format_from_width(wf.getsampwidth()),
-                    channels=wf.getnchannels(),
-                    rate=wf.getframerate(),
-                    input=True,
-                    frames_per_buffer=CHUNK)
+  if os.path.isfile(filePath):
+    with open(filePath, "rb") as f:
+      s.send(b"UPLOAD " + fileName.encode(FORMAT))
+      time.sleep(
+        0.01
+      )  # This sleep ensures that they get sent as seperate transmissions
 
-  data = wf.readframes(CHUNK)
-  a = pickle.dumps(data)
-  message = struct.pack("Q",len(a))+a
-  s.sendall(message)
+      fileSize = round(os.path.getsize(filePath) / 1000000, 2)
+      fileSize = str(fileSize)
+      s.send(fileSize.encode(FORMAT))
+      time.sleep(
+        0.01
+      )  # This sleep ensures that they get sent as seperate transmissions
 
-def UploadVideoFile(filename):
-  data = None
+      frame = f.read(CHUNK)
+      while len(frame) == CHUNK:
+        s.send(frame)
+        frame = f.read(CHUNK)
+      
+      # still need to send the last frame
+      s.send(frame)
+      print("File Sent\n")
+
+      # print("Sending EOF byte\n")
+      # temp = b"\n"
+      # s.send(temp)
+
+      print("waiting for ACK from server\n")
+      byte = s.recv(10)
+      while byte != b"ACK":
+        byte = s.recv(10)
+      print("ACK recieved\n")
+  else:
+    print("ERROR: file does not exist\n")
+      
+  t1 = time.time()  # End timer
+  print(f"UPLOAD ran for: {t1-t0} \n")
+  
+
+
+
 
 def Connect(HOST, PORT):
   global s
@@ -119,26 +144,44 @@ def Download(fileName):
   t0 = time.time()  # Start timer
   s.send("DOWNLOAD ".encode(FORMAT) + fileName.encode(FORMAT))
 
-  print("waiting for data\n")
-  data = s.recv(1024)  # Receive data from the server
-  data = data.decode(FORMAT)
-  print(f"received data {data}\n")
+  # print("waiting for data\n")
+  # data = s.recv(1024)  # Receive data from the server
+  # data = data.decode(FORMAT)
+  # print(f"received data {data}\n")
 
-  if data == "DNE":
-    print("File not found on server or client 2")
-    t1 = time.time()
+  # if data == "DNE":
+  #   print("File not found on server or client 2")
+  #   t1 = time.time()
+  #   print(f"DOWNLOAD ran for: {t1-t0} \n")
+
+  #   return
+
+  # print("File recieved from server")
+
+  temp = s.recv(CHUNK).decode().split()
+  result = temp[0]
+
+
+  if result == "YES":
+    fileSize = temp[1]
+    # recieve and write the file
+    print("File is downloading...")
+    with open(f"./ClientFiles/{fileName}", "wb") as f:
+      frame = s.recv(CHUNK)
+      while len(frame) == CHUNK:
+        f.write(frame)
+        bytesReceived = round(os.path.getsize("./ServerFiles/" + fileName), 2) / 1000000
+        print(f"received {bytesReceived} / {fileSize} MB                      ")
+        sys.stdout.write("\033[F")
+        frame = s.recv(CHUNK)
+      f.write(frame) # dont forget about the last frame
+
+    s.send("ACK".encode(FORMAT))  # Send ACK to server
+    t1 = time.time()  # End timer
     print(f"DOWNLOAD ran for: {t1-t0} \n")
 
-    return
-
-  print("File recieved from server")
-
-  with open(f"./ClientFiles/{fileName}", "w") as f:
-    f.write(data)  # Write the data received from the server to the new file
-
-  s.send("ACK".encode(FORMAT))  # Send ACK to server
-  t1 = time.time()  # End timer
-  print(f"DOWNLOAD ran for: {t1-t0} \n")
+  else:
+    print("File does not exist on server or other client...\n")
 
 
 def Delete(fileName):
@@ -201,13 +244,11 @@ def Main():
       if command == "UPLOAD":
         files = splitInput[1:]
         for file in files:
-          if file.endswith(".txt"):
-            UploadTextFile(file)
-          elif file.endswith(".wav"):
-            UploadAudioFile(file)
-          elif file.endswith(".mp4"):
-            UploadVideoFile(file)
-          time.sleep(0.3)
+          # if file.endswith(".txt"):
+          #   UploadTextFile(file)
+          # else:
+          UploadMediaFile(file)
+          time.sleep(2.5)
 
       # download a file from the server if that is what the user commanded
       elif command == "DOWNLOAD":

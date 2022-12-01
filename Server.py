@@ -1,8 +1,9 @@
 # this is the server for the Fall 2022 CS 371 Project
 
 import socket, threading, _thread as thread, os, time
+import sys
 from FileClass import File
-import wave, pyaudio, pickle, struct
+# import wave, pyaudio, pickle, struct
 
 print_lock = threading.Lock()
 
@@ -24,6 +25,7 @@ if not os.path.exists("./ServerFiles"):
 # HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 HOST = "127.0.0.1"
 PORT = 8000  # Port to listen on (non-privileged ports are > 1023)
+CHUNK = 2056
 fileStorage = {}
 
 
@@ -39,87 +41,98 @@ def OnStart():
 
 
 def Upload(fileName, connection):
+    fileSize = connection.recv(CHUNK)
+    fileSize = fileSize.decode(FORMAT)
 
-    if fileName.endswith(".txt"):
-        fileBytes = connection.recv(1024)
-        fileStorage[fileName] = File(fileName)
-        fileObj = fileStorage[fileName]
-    
-        fileObj.initContentGivenBytes(fileBytes)
-        fileObj.addFileToServer()
-    
-        print(
-            f"""
-        {fileObj.name}
-        {fileObj.path}
-        {fileObj.fileSize}
-        {fileObj.downloads}
-        {fileObj.fileContents}
-        """
-        )
-    else:
-        byteRecieved = connection.recv(1)
-        data = byteRecieved
-        while byteRecieved != b'\x94':
-            data += byteRecieved
-            byteRecieved = connection.recv(1)
-        
-        print(data)
+    frame = connection.recv(CHUNK)
+    data = b""
+    bytesReceived = 0
+    with open(f"./ServerFiles/" + fileName, "wb") as f:
+        while len(frame) == CHUNK:
+            #data += frame
+            f.write(frame)
+            bytesReceived = round(os.path.getsize("./ServerFiles/" + fileName), 2) / 1000000
+            print(f"received {bytesReceived} / {fileSize} MB                      ")
+            sys.stdout.write("\033[F")
+            frame = connection.recv(CHUNK)
+        #still need to add the last frame
+        f.write(frame)
 
-        fileStorage[fileName] = File(fileName)
-        fileObj = fileStorage[fileName]
-        fileObj.fileBytes = data
-        fileObj.addFileToServer(False)
+    print("Sending ACK to client\n")
+    ackByte = b"ACK"
+    connection.send(ackByte)
+
 
 
 
 def Download(fileName, connection, checkConnection):
-    existsOnServer, existsOnClient, fileObj = GetFile(
-        fileName, connection, checkConnection
-    )
+    if os.path.exists(f"./ServerFiles/{fileName}"):
+        existsOnServer = True
+    # else:
+    #     existsOnServer, existsOnClient, fileObj = GetFile(
+    #         fileName, connection, checkConnection
+    #     )
 
     # if not existsOnServer and existsOnClient:
     #   with open(f"./ServerFiles/{fileName}", "r") as f:
     #     data = f.read()
     #     fileObj.initBytesGivenContent(data)
 
-    if not existsOnServer and not existsOnClient:
-        connection.send("DNE".encode(FORMAT))
-        return
+    # if not existsOnServer and not existsOnClient:
+    #     connection.send("DNE".encode(FORMAT))
+    #     return
 
-    print("Sending requested file to client")
+#     print("Sending requested file to client")
 
-    connection.send(fileObj.fileBytes)
+#     connection.send(fileObj.fileBytes)
 
-    fileObj.downloads += 1
+#     fileObj.downloads += 1
 
-    print(
-        f"""
-  File: {fileObj.name}
-  File Path: {fileObj.path}
-  Size: {fileObj.fileSize}
-  Downloads: {fileObj.downloads}
-  Content: {fileObj.fileContents}
-  """
-    )
+#     print(
+#         f"""
+#   File: {fileObj.name}
+#   File Path: {fileObj.path}
+#   Size: {fileObj.fileSize}
+#   Downloads: {fileObj.downloads}
+#   Content: {fileObj.fileContents}
+#   """
+#     )
+    # send metadata
+    if(existsOnServer):
+        fileSize = round(os.path.getsize(f"./ServerFiles/{fileName}") / 1000000, 2)
+        metaData = f"YES {str(fileSize)}"
+        connection.send(metaData.encode(FORMAT))
 
-    # listen for acknowledgement from client
-    print("waiting on ACK from Client")
-    ackData = connection.recv(1024)
-    # decode acknowledgement
-    ackData = ackData.decode(FORMAT)
-    # confirm acknowledgement is in proper format
-    if ackData == "ACK":
-        print("ACK RECIEVED")
-        # if the file was not originally on the server, delete it
-        if not existsOnServer:
-            if os.path.isfile(f"./ServerFiles/{fileName}"):
-                os.remove(f"./ServerFiles/{fileName}")
-                print(f"Removed ./ServerFiles/{fileName}")
-            else:
-                print("ERROR: file does not exist\n")
+        # send file bytes
+        print("File being sent to client...\n")
+        with open(f"./ServerFiles/{fileName}", "rb") as f:
+            frame = f.read(CHUNK)
+            while len(frame) == CHUNK:
+                connection.send(frame)
+                frame = f.read(CHUNK)
+            connection.send(frame)
+
+        # listen for acknowledgement from client
+        print("waiting on ACK from Client")
+        ackData = connection.recv(CHUNK)
+        # decode acknowledgement
+        ackData = ackData.decode(FORMAT)
+        # confirm acknowledgement is in proper format
+        if ackData == "ACK":
+            print("ACK RECIEVED")
+            # if the file was not originally on the server, delete it
+            if not existsOnServer:
+                if os.path.isfile(f"./ServerFiles/{fileName}"):
+                    os.remove(f"./ServerFiles/{fileName}")
+                    print(f"Removed ./ServerFiles/{fileName}")
+                else:
+                    print("ERROR: file does not exist\n")
+        else:
+            print("ERROR: no ack from client\n")
+
     else:
-        print("ERROR: no ack from client\n")
+        metaData = "DNE"
+        connection.send(metaData.encode(FORMAT))
 
 
 def Dir(connection):
@@ -157,7 +170,9 @@ def HandleClient(connection, checkConnection):
 
     while True:
         # wait for the client to send a command
+        data = b""
         data = connection.recv(1024)
+        print(data)
         data = data.decode(FORMAT)
         print(f"\n\n{data}\n\n")
         # Split the message from the client using a space as the delimeter
@@ -234,16 +249,9 @@ def GetFile(fileName, connection, checkConnection):
             result = otherClient.recv(1024).decode(FORMAT)
 
             if result == "YES":
-                existsOnClient = True
-                # write the new file
-                fileBytes = otherClient.recv(1024)
-                fileStorage[fileName] = File(fileName)
-                fileObj = fileStorage[fileName]
-
-                fileObj.initContentGivenBytes(fileBytes)
-
-                with open(f"./ServerFiles/{fileName}", "w") as f:
-                    f.write(fileObj.fileContents)
+                Upload(fileName)
+            else:
+                print("Other client does not have the file\n")
 
     return (existsOnServer, existsOnClient, fileObj)
 
