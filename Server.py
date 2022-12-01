@@ -2,6 +2,7 @@
 
 import socket, threading, _thread as thread, os, time
 from FileClass import File
+import wave, pyaudio, pickle, struct
 
 print_lock = threading.Lock()
 
@@ -39,23 +40,37 @@ def OnStart():
 
 def Upload(fileName, connection):
 
-    fileBytes = connection.recv(1024)
+    if fileName.endswith(".txt"):
+        fileBytes = connection.recv(1024)
+        fileStorage[fileName] = File(fileName)
+        fileObj = fileStorage[fileName]
+    
+        fileObj.initContentGivenBytes(fileBytes)
+        fileObj.addFileToServer()
+    
+        print(
+            f"""
+        {fileObj.name}
+        {fileObj.path}
+        {fileObj.fileSize}
+        {fileObj.downloads}
+        {fileObj.fileContents}
+        """
+        )
+    else:
+        byteRecieved = connection.recv(1)
+        data = byteRecieved
+        while byteRecieved != b'\x94':
+            data += byteRecieved
+            byteRecieved = connection.recv(1)
+        
+        print(data)
 
-    fileStorage[fileName] = File(fileName)
-    fileObj = fileStorage[fileName]
+        fileStorage[fileName] = File(fileName)
+        fileObj = fileStorage[fileName]
+        fileObj.fileBytes = data
+        fileObj.addFileToServer(False)
 
-    fileObj.initContentGivenBytes(fileBytes)
-    fileObj.addFileToServer()
-
-    print(
-        f"""
-  {fileObj.name}
-  {fileObj.path}
-  {fileObj.fileSize}
-  {fileObj.downloads}
-  {fileObj.fileContents}
-  """
-    )
 
 
 def Download(fileName, connection, checkConnection):

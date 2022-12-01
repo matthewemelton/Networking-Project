@@ -2,6 +2,7 @@
 
 import socket, os, time, datetime
 import threading, _thread as thread
+import pyaudio, wave, pickle, struct
 
 # clientDirectory = Directory()
 
@@ -11,6 +12,7 @@ FORMAT = "utf-8"  # The encoding format used for the file
 downloadDict = {}
 waitingOnServer = False
 HOST, PORT = "127.0.0.1", 8000
+CHUNK = 1024
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 if not os.path.exists("./ClientFiles"):
@@ -55,43 +57,52 @@ def Check(fileName, s2):
     s2.send("NO".encode(FORMAT))
 
 
-def Upload(fileName):
+def UploadTextFile(fileName):
   global s
   filePath = f"./ClientFiles/{fileName}"
   t0 = time.time()  # Start timer
   # Check if the user provided a valid file name
 
-    if os.path.isfile(filePath):
+  if os.path.isfile(filePath):
 
     # Open the file
-      with open(filePath, "r") as f:
-      
-      if fileName.endswith(".txt"):
-        data = f.read()  # Read the data from the file
-        # Send the info to the server in the format: COMMAND fileName
-        # Spaces are being used as the delimeters
-        s.send(b"UPLOAD " + fileName.encode(FORMAT))
-        time.sleep(
-          0.01
-        )  # This sleep ensures that they get sent as seperate transmissions
-        # Send the data
-        s.send(data.encode(FORMAT))
-      
-      elif fileName.endswith(".mp3"):
-        # something here
-        data = bytes(f.read())
-        
-      elif fileName.endswith(".mp4"):
-        # If not, give an error message
-    else:
-      print("ERROR: file does not exist\n")
+    with open(filePath, "r") as f:
+      data = f.read()  # Read the data from the file
+      # Send the info to the server in the format: COMMAND fileName
+      # Spaces are being used as the delimeters
+      s.send(b"UPLOAD " + fileName.encode(FORMAT))
+      time.sleep(
+        0.01
+      )  # This sleep ensures that they get sent as seperate transmissions
+      # Send the data
+      s.send(data.encode(FORMAT))
+  else:
+    print("ERROR: file does not exist\n")
       
   t1 = time.time()  # End timer
   print(f"UPLOAD ran for: {t1-t0} \n")
 
+def UploadAudioFile(filename):
+  s.send(b"UPLOAD " + filename.encode(FORMAT))
+  time.sleep(
+    0.01
+  )  # This sleep ensures that they get sent as seperate transmissions
 
-# Loop indefinitely
+  pya = pyaudio.PyAudio()
+  wf = wave.open("ClientFiles/" + filename, 'rb')
+  stream = pya.open(format=pya.get_format_from_width(wf.getsampwidth()),
+                    channels=wf.getnchannels(),
+                    rate=wf.getframerate(),
+                    input=True,
+                    frames_per_buffer=CHUNK)
 
+  data = wf.readframes(CHUNK)
+  a = pickle.dumps(data)
+  message = struct.pack("Q",len(a))+a
+  s.sendall(message)
+
+def UploadVideoFile(filename):
+  data = None
 
 def Connect(HOST, PORT):
   global s
@@ -190,7 +201,12 @@ def Main():
       if command == "UPLOAD":
         files = splitInput[1:]
         for file in files:
-          Upload(file)
+          if file.endswith(".txt"):
+            UploadTextFile(file)
+          elif file.endswith(".wav"):
+            UploadAudioFile(file)
+          elif file.endswith(".mp4"):
+            UploadVideoFile(file)
           time.sleep(0.3)
 
       # download a file from the server if that is what the user commanded

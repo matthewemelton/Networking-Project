@@ -15,9 +15,15 @@ class File:
         self.uploadDate = d.datetime.now()
         
 
-    def addFileToServer(self):
+    def addFileToServer(self, isTxt):
+      if isTxt:
         with open(f"./ServerFiles/{self.name}", "w") as f:
             f.write(self.fileContents)
+
+        self.fileSize = os.path.getsize(f"./ServerFiles/{self.name}")
+      else:
+        with open(f"./ServerFiles/{self.name}", "wb") as f:
+            f.write(self.fileBytes)
 
         self.fileSize = os.path.getsize(f"./ServerFiles/{self.name}")
 
