@@ -1,7 +1,9 @@
 # this is the server for the Fall 2022 CS 371 Project
 
 import socket, threading, _thread as thread, os, time
+import sys
 from FileClass import File
+# import wave, pyaudio, pickle, struct
 
 print_lock = threading.Lock()
 
@@ -23,6 +25,7 @@ if not os.path.exists("./ServerFiles"):
 # HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 HOST = "127.0.0.1"
 PORT = 8000  # Port to listen on (non-privileged ports are > 1023)
+CHUNK = 2056
 fileStorage = {}
 
 
@@ -38,6 +41,7 @@ def OnStart():
 
 
 def Upload(fileName, connection):
+<<<<<<< HEAD
   fileBytes = b""
   numTransactions = int(connection.recv(1024).decode(FORMAT))
   print(numTransactions)
@@ -49,10 +53,31 @@ def Upload(fileName, connection):
   if fileName.endswith(".txt"):
     fileStorage[fileName] = File(fileName)
     fileObj = fileStorage[fileName]
+=======
+    fileSize = connection.recv(CHUNK)
+    fileSize = fileSize.decode(FORMAT)
 
-    fileObj.initContentGivenBytes(fileBytes)
-    fileObj.addFileToServer()
+    frame = connection.recv(CHUNK)
+    data = b""
+    bytesReceived = 0
+    with open(f"./ServerFiles/" + fileName, "wb") as f:
+        while len(frame) == CHUNK:
+            #data += frame
+            f.write(frame)
+            bytesReceived = round(os.path.getsize("./ServerFiles/" + fileName), 2) / 1000000
+            print(f"received {bytesReceived} / {fileSize} MB                      ")
+            sys.stdout.write("\033[F")
+            frame = connection.recv(CHUNK)
+        #still need to add the last frame
+        f.write(frame)
 
+    print("Sending ACK to client\n")
+    ackByte = b"ACK"
+    connection.send(ackByte)
+>>>>>>> Matthew-Local
+
+
+<<<<<<< HEAD
   #   print(
   #       f"""
   # {fileObj.name}
@@ -75,12 +100,22 @@ def Upload(fileName, connection):
 def Download(fileName, connection, checkConnection):
   existsOnServer, existsOnClient, fileObj = GetFile(fileName, connection,
                                                     checkConnection)
+=======
+
+
+def Download(fileName, connection, checkConnection):
+    if os.path.exists(f"./ServerFiles/{fileName}"):
+        existsOnServer = True
+    else:
+        existsOnServer, existsOnClient, fileObj = GetFile(fileName, connection, checkConnection)
+>>>>>>> Matthew-Local
 
   # if not existsOnServer and existsOnClient:
   #   with open(f"./ServerFiles/{fileName}", "r") as f:
   #     data = f.read()
   #     fileObj.initBytesGivenContent(data)
 
+<<<<<<< HEAD
   if not existsOnServer and not existsOnClient:
     connection.send("DNE".encode(FORMAT))
     return
@@ -116,6 +151,63 @@ def Download(fileName, connection, checkConnection):
         print("ERROR: file does not exist\n")
   else:
     print("ERROR: no ack from client\n")
+=======
+    # if not existsOnServer and not existsOnClient:
+    #     connection.send("DNE".encode(FORMAT))
+    #     return
+
+#     print("Sending requested file to client")
+
+#     connection.send(fileObj.fileBytes)
+
+#     fileObj.downloads += 1
+
+#     print(
+#         f"""
+#   File: {fileObj.name}
+#   File Path: {fileObj.path}
+#   Size: {fileObj.fileSize}
+#   Downloads: {fileObj.downloads}
+#   Content: {fileObj.fileContents}
+#   """
+#     )
+    # send metadata
+    if(existsOnServer):
+        fileSize = round(os.path.getsize(f"./ServerFiles/{fileName}") / 1000000, 2)
+        metaData = f"YES {str(fileSize)}"
+        connection.send(metaData.encode(FORMAT))
+
+        # send file bytes
+        print("File being sent to client...\n")
+        with open(f"./ServerFiles/{fileName}", "rb") as f:
+            frame = f.read(CHUNK)
+            while len(frame) == CHUNK:
+                connection.send(frame)
+                frame = f.read(CHUNK)
+            connection.send(frame)
+
+        # listen for acknowledgement from client
+        print("waiting on ACK from Client")
+        ackData = connection.recv(CHUNK)
+        # decode acknowledgement
+        ackData = ackData.decode(FORMAT)
+        # confirm acknowledgement is in proper format
+        if ackData == "ACK":
+            print("ACK RECIEVED")
+            # if the file was not originally on the server, delete it
+            if not existsOnServer:
+                if os.path.isfile(f"./ServerFiles/{fileName}"):
+                    os.remove(f"./ServerFiles/{fileName}")
+                    print(f"Removed ./ServerFiles/{fileName}")
+                else:
+                    print("ERROR: file does not exist\n")
+        else:
+            print("ERROR: no ack from client\n")
+
+    else:
+        metaData = "DNE"
+        connection.send(metaData.encode(FORMAT))
+>>>>>>> Matthew-Local
 
 
 def Dir(connection):
@@ -151,6 +243,7 @@ def HandleClient(connection, checkConnection):
     client1 = clients[1]
     client2 = clients[2]
 
+<<<<<<< HEAD
   while True:
     # wait for the client to send a command
     data = connection.recv(1024)
@@ -160,6 +253,19 @@ def HandleClient(connection, checkConnection):
     clientTransmission = data.split()
     # the first chunk of the message from the client should always be the command keyword
     command = clientTransmission[0]
+=======
+    while True:
+        # wait for the client to send a command
+        data = b""
+        data = connection.recv(1024)
+        print(data)
+        data = data.decode(FORMAT)
+        print(f"\n\n{data}\n\n")
+        # Split the message from the client using a space as the delimeter
+        clientTransmission = data.split()
+        # the first chunk of the message from the client should always be the command keyword
+        command = clientTransmission[0]
+>>>>>>> Matthew-Local
 
     # Check which command keyword was send by the client, calling the appropriate helper function
     if command == "UPLOAD":
@@ -241,7 +347,39 @@ def GetFile(fileName, connection, checkConnection):
         with open(f"./ServerFiles/{fileName}", "w") as f:
           f.write(fileObj.fileContents)
 
+<<<<<<< HEAD
   return (existsOnServer, existsOnClient, fileObj)
+=======
+        # send the file to the client
+        global numClients, client1, client2
+        # check if there are 2 clients connected
+        if numClients == 2:
+            if (
+                checkConnection == client1
+            ):  # Change this to be the client 2 connection object
+                otherClient = client2
+            else:
+                otherClient = client1
+            # Using upload here downloads the file from client 2 onto the server. The file will need to be deleted from the server after client 1 receives it
+
+            print("FILE NOT FOUND: Checking the other client for the file...\n")
+
+            # print("Post listen, pre accept")
+            otherClient.send(f"CHECK {fileName}".encode(FORMAT))
+
+            # c2, addr = s2.accept()
+
+            print(f"Sent CHECK {fileName}")
+
+            result = otherClient.recv(1024).decode(FORMAT)
+
+            if result == "YES":
+                Upload(fileName)
+            else:
+                print("Other client does not have the file\n")
+
+    return (existsOnServer, existsOnClient, fileObj)
+>>>>>>> Matthew-Local
 
 
 def Main():
