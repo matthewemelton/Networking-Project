@@ -68,7 +68,6 @@ def Scenario2_1(connection, checkConnection, file1, file2):
     result = otherClient.recv(CHUNK)
     print(result)
     if result.decode(FORMAT) == "YES":
-        print("\n\nEVERYTHING IS OKAY\n\n")
         with open(f"./ServerFiles/{file2}", "wb") as f:
             frame = otherClient.recv(CHUNK)
             while len(frame) == CHUNK:
@@ -89,7 +88,112 @@ def Scenario2_1(connection, checkConnection, file1, file2):
                 frame = f.read(CHUNK)
             connection.send(frame)
     else:
-        print("\n\nEVERYTHING IS NOT OKAY\n\n")
+        print("\n\nERROR: file D.N.E.\n\n")
+    
+    # be sure to delete file 2 for the next test
+    os.remove(f"./ServerFiles/{file2}")
+
+def Scenario2_2(connection, checkConnection, file1, file2):
+    # this scenario does the same as 2_1 except it merges the two files before sending to the client
+
+    # get the file from the other client
+    otherClient.send(f"CHECK {file2}".encode(FORMAT))
+    result = otherClient.recv(CHUNK)
+    print(result)
+    if result.decode(FORMAT) == "YES":
+        with open(f"./ServerFiles/{file2}", "wb") as f:
+            frame = otherClient.recv(CHUNK)
+            while len(frame) == CHUNK:
+                f.write(frame)
+                frame = otherClient.recv(CHUNK)
+            f.write(frame)
+        
+        # send ACK
+        ACK = "ACK"
+        otherClient.send(ACK.encode(FORMAT))
+        time.sleep(0.5)
+    
+    else:
+        print("\n\nERROR: file D.N.E.\n\n")
+
+    # merge the two files together
+    with open("./ServerFiles/Merged.txt", "wb") as f:
+        with open(f"./ServerFiles/{file1}", "rb") as f1:
+            f.write(f1.read())
+        with open(f"./ServerFiles/{file2}", "rb") as f2:
+            data = None;
+
+    # the first file exist on the server
+    with open(f"./ServerFiles/{file1}", "rb") as f:
+        frame = f.read(CHUNK)
+        while len(frame) == CHUNK:
+            connection.send(frame)
+            frame = f.read(CHUNK)
+        connection.send(frame)
+    
+    # wait for ACK from client
+    ack = connection.recv(CHUNK)
+    while ack.decode(FORMAT) != "ACK":
+        ack = connection.recv(CHUNK)
+
+    # the second file does not exist on the server 
+    global client1, client2, numClients
+    if numClients == 2:
+        if checkConnection == client1:
+            otherClient = client2
+        else:
+            otherClient = client1
+    else:
+        print("ERROR there is only one client connected!\n")
+
+def Scenario2_3(connection, checkConnection, file1, file2):
+    # the second file does not exist on the server 
+    global client1, client2, numClients
+    if numClients == 2:
+        if checkConnection == client1:
+            otherClient = client2
+        else:
+            otherClient = client1
+    else:
+        print("ERROR there is only one client connected!\n")
+
+    # get the file from the other client
+    otherClient.send(f"CHECK {file2}".encode(FORMAT))
+    result = otherClient.recv(CHUNK)
+    print(result)
+    if result.decode(FORMAT) == "YES":
+        with open(f"./ServerFiles/{file2}", "wb") as f:
+            frame = otherClient.recv(CHUNK)
+            while len(frame) == CHUNK:
+                f.write(frame)
+                frame = otherClient.recv(CHUNK)
+            f.write(frame)
+        
+        # send ACK
+        ACK = "ACK"
+        otherClient.send(ACK.encode(FORMAT))
+        time.sleep(0.5)
+    
+    else:
+        print("\n\nERROR: file D.N.E.\n\n")
+
+    # send File 1
+    with open(f"./ServerFiles/{file1}", "rb") as f:
+        frame = f.read(CHUNK)
+        while len(frame) == CHUNK:
+            connection.send(frame)
+            frame = f.read(CHUNK)
+        connection.send(frame)
+    
+    # send file 2 back to back
+        with open(f"./ServerFiles/{file2}", "rb") as f:
+            frame = f.read(CHUNK)
+            while len(frame) == CHUNK:
+                connection.send(frame)
+                frame = f.read(CHUNK)
+            connection.send(frame)
+
+    
 
     
         
@@ -255,6 +359,12 @@ def HandleClient(connection, checkConnection):
         
         elif command == "2_1":
             Scenario2_1(connection, checkConnection, clientTransmission[1], clientTransmission[2])
+        
+        elif command == "2_2":
+            Scenario2_2(connection, checkConnection, clientTransmission[1], clientTransmission[2])
+        
+        elif command == "2_3":
+            Scenario2_3(connection, checkConnection, clientTransmission[1], clientTransmission[2])
                 
 
         else:

@@ -252,20 +252,50 @@ def Scenario2_1(file1, file2):
   t1 = time.time()
   totalTime = t1-t0
 
+  # delete the files for the next test
+  os.remove(f"./Client2Files/{file1}")
+  os.remove(f"./Client2Files/{file2}")
+
   return totalTime
 
 def Scenario2_2(file1, file2):
   data = None
 
+def Scenario2_3(file1, file2):
+  t0 = time.time() # start the timer for scenario 2_1
+  request = f"2_3 {file1} {file2}"
+  s.send(request.encode(FORMAT))
 
+  # recieve the first file
+  with open(f"./Client2Files/{file1}", "wb") as f:
+    frame = s.recv(CHUNK)
+    while len(frame) == CHUNK:
+      f.write(frame)
+      frame = s.recv(CHUNK)
+    f.write(frame)
+  
+  # recieve the second file
+  with open(f"./Client2Files/{file2}", "wb") as f:
+    frame = s.recv(CHUNK)
+    while len(frame) == CHUNK:
+      f.write(frame)
+      frame = s.recv(CHUNK)
+    f.write(frame)
+  
+  t1 = time.time()
+  return t1-t0
   
 
 
 def RunTest(file1, file2):
   # run scenario 2-1
   print("Running test for Scenario 2...\n")
+
   result = Scenario2_1(file1, file2)
   print(f"Strategy 2-1 took {round(result, 2)} seconds\n")
+
+  result = Scenario2_3(file1, file2)
+  print(f"Strategy 2-3 took {round(result, 2)} seconds\n")
 
 
 def Main():
