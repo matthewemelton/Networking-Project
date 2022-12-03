@@ -39,6 +39,61 @@ def OnStart():
 
         fileObj.loadFileSize()
 
+def Scenario2_1(connection, checkConnection, file1, file2):
+    # the first file exist on the server
+    with open(f"./ServerFiles/{file1}", "rb") as f:
+        frame = f.read(CHUNK)
+        while len(frame) == CHUNK:
+            connection.send(frame)
+            frame = f.read(CHUNK)
+        connection.send(frame)
+    
+    # wait for ACK from client
+    ack = connection.recv(CHUNK)
+    while ack.decode(FORMAT) != "ACK":
+        ack = connection.recv(CHUNK)
+
+    # the second file does not exist on the server 
+    global client1, client2, numClients
+    if numClients == 2:
+        if checkConnection == client1:
+            otherClient = client2
+        else:
+            otherClient = client1
+    else:
+        print("ERROR there is only one client connected!\n")
+
+    # get the file from the other client
+    otherClient.send(f"CHECK {file2}".encode(FORMAT))
+    result = otherClient.recv(CHUNK)
+    print(result)
+    if result.decode(FORMAT) == "YES":
+        print("\n\nEVERYTHING IS OKAY\n\n")
+        with open(f"./ServerFiles/{file2}", "wb") as f:
+            frame = otherClient.recv(CHUNK)
+            while len(frame) == CHUNK:
+                f.write(frame)
+                frame = otherClient.recv(CHUNK)
+            f.write(frame)
+        
+        # send ACK
+        ACK = "ACK"
+        otherClient.send(ACK.encode(FORMAT))
+        time.sleep(0.5)
+    
+        # now send the file to the client
+        with open(f"./ServerFiles/{file2}", "rb") as f:
+            frame = f.read(CHUNK)
+            while len(frame) == CHUNK:
+                connection.send(frame)
+                frame = f.read(CHUNK)
+            connection.send(frame)
+    else:
+        print("\n\nEVERYTHING IS NOT OKAY\n\n")
+
+    
+        
+
 
 def Upload(fileName, connection):
     fileSize = connection.recv(CHUNK)
@@ -61,8 +116,6 @@ def Upload(fileName, connection):
     print("Sending ACK to client\n")
     ackByte = b"ACK"
     connection.send(ackByte)
->>>>>>> Matthew-Local
-
 
 
 
@@ -199,6 +252,10 @@ def HandleClient(connection, checkConnection):
             connection.send(temp.encode(FORMAT))
             connection.close()
             break
+        
+        elif command == "2_1":
+            Scenario2_1(connection, checkConnection, clientTransmission[1], clientTransmission[2])
+                
 
         else:
             print("ERROR: Invalid command keyword received\n")
