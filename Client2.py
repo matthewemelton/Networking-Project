@@ -259,7 +259,38 @@ def Scenario2_1(file1, file2):
   return totalTime
 
 def Scenario2_2(file1, file2):
-  data = None
+  t0 = time.time() # start the timer for scenario 2_1
+  request = f"2_2 {file1} {file2}"
+  s.send(request.encode(FORMAT))
+
+  # receive the split point
+  splitPoint = s.recv(CHUNK).decode(FORMAT)
+  splitPoint = int(splitPoint)
+
+  # recieve the first file
+  with open(f"./Client2Files/Merged", "wb") as merged:
+    frame = s.recv(CHUNK)
+    while len(frame) == CHUNK:
+      merged.write(frame)
+      frame = s.recv(CHUNK)
+    merged.write(frame)
+
+  # file has been merged but it needs to be split up now
+  with open("./Client2Files/Merged", "rb") as merged:
+      with open(f"./Client2Files/{file1}", "wb") as m1:
+        m1.write(merged.read(splitPoint))
+      with open(f"./Client2Files/{file2}", "wb") as m2:
+        m2.write(merged.read())
+  
+  s.send("ACK".encode(FORMAT))
+  
+  t1 = time.time()
+
+  # delete the files for the next test
+  os.remove(f"./Client2Files/{file1}")
+  os.remove(f"./Client2Files/{file2}")
+
+  return t1-t0
 
 def Scenario2_3(file1, file2):
   t0 = time.time() # start the timer for scenario 2_1
@@ -290,6 +321,9 @@ def Scenario2_3(file1, file2):
 def RunTest(file1, file2):
   # run scenario 2-1
   print("Running test for Scenario 2...\n")
+
+  result = Scenario2_1(file1, file2)
+  print(f"Strategy 2-1 took {round(result, 2)} seconds\n")
 
   result = Scenario2_1(file1, file2)
   print(f"Strategy 2-1 took {round(result, 2)} seconds\n")
